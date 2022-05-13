@@ -9,6 +9,14 @@ enum Color {
     Undef, 
 }
 
+fn color_to_string(color: Color) -> String {
+    match color {
+        Color::White => String::from("white"),
+        Color::Black => String::from("blue"),
+        Undef => String::from("red"), //NEED TO DO BETTER ERROR HANDLING
+    }
+}
+
 /* Enumeration for a piece type */ 
 #[derive(Clone, Copy)]
 pub enum piece_type {
@@ -42,25 +50,33 @@ impl Square {
     }
 
     fn symbol(&self) -> String {
-        let mut  color_str: String; //Change to String later maybe?
+        let mut color_str: String; //Change to String later maybe?
         match self.color {
             Color::White => color_str = String::from("white"),
             _ => color_str = String::from("blue"), //FIX THIS, IT CAN BE NONE!!!!!
         }
-        let piece_type = match self.piece {
-            Some(x) => self.piece.unwrap().piece_type,
-            None => piece_type::None,
+        let mut piece_type;
+        let mut piece_color; 
+        match self.piece {
+            Some(x) => {
+                piece_type = self.piece.unwrap().piece_type;
+                piece_color = color_to_string(self.piece.unwrap().color);
+            },
+            None => {
+                piece_type = piece_type::None;
+                piece_color = color_to_string(Color::Undef);
+            },
         };
 
         let leftBracket = "[".color(color_str.clone());
         let rightBracket = "]".color(color_str);
         match piece_type {
-            piece_type::King   => format!("{}{}{}", leftBracket, "K", rightBracket),
-            piece_type::Queen  => format!("{}{}{}", leftBracket, "Q", rightBracket),
-            piece_type::Rook   => format!("{}{}{}", leftBracket, "R", rightBracket),
-            piece_type::Bishop => format!("{}{}{}", leftBracket, "B", rightBracket),
-            piece_type::Knight => format!("{}{}{}", leftBracket, "N", rightBracket),
-            piece_type::Pawn  => format!("{}{}{}", leftBracket, "p", rightBracket),
+            piece_type::King   => format!("{}{}{}", leftBracket, "K".color(piece_color), rightBracket),
+            piece_type::Queen  => format!("{}{}{}", leftBracket, "Q".color(piece_color), rightBracket),
+            piece_type::Rook   => format!("{}{}{}", leftBracket, "R".color(piece_color), rightBracket),
+            piece_type::Bishop => format!("{}{}{}", leftBracket, "B".color(piece_color), rightBracket),
+            piece_type::Knight => format!("{}{}{}", leftBracket, "N".color(piece_color), rightBracket),
+            piece_type::Pawn  => format!("{}{}{}", leftBracket, "p".color(piece_color), rightBracket),
             piece_type::None => format!("{}{}{}", leftBracket, " ", rightBracket),
         }
     }
@@ -128,28 +144,28 @@ impl Board {
         match val1 {
             0 | 2 | 4 | 6 => {
                 match val2 {
-                    1 | 3 | 5 | 7 => Color::Black,
-                    _ => Color::White,
+                    1 | 3 | 5 | 7 => Color::White,
+                    _ => Color::Black,
                 }
             }
             _ => {
                 match val2 {
-                    1 | 3 | 5 | 7 => Color::White,
-                    _ => Color::Black,
+                    1 | 3 | 5 | 7 => Color::Black,
+                    _ => Color::White,
                 }
             }
         }
     }
 
     fn printBoard(&self) {
-        println!("   [1][2][3][4][5][6][7][8]");
-        for index in 0..8 {
-            print!("[{}]", index);
+        for index in (0..8).rev() {
+            print!("[{}]", index + 1);
             for innerIndex in 0..8 {
                 print!("{}", self.squares[index][innerIndex].symbol());
             }
             print!("\n");
         }
+        println!("   [a][b][c][d][e][f][g][h]");
     }
 }
 
