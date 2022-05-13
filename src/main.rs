@@ -6,7 +6,7 @@ use colored::*;
 enum Color {
     White,
     Black,
-    Undef, 
+    Undef, /* This is dumb */
 }
 
 fn color_to_string(color: Color) -> String {
@@ -50,11 +50,13 @@ impl Square {
     }
 
     fn symbol(&self) -> String {
+        /* This is dumb */
         let mut color_str: String; //Change to String later maybe?
         match self.color {
             Color::White => color_str = String::from("white"),
             _ => color_str = String::from("blue"), //FIX THIS, IT CAN BE NONE!!!!!
         }
+        /* This is dumb */
         let mut piece_type;
         let mut piece_color; 
         match self.piece {
@@ -67,7 +69,7 @@ impl Square {
                 piece_color = color_to_string(Color::Undef);
             },
         };
-
+        /* This is dumb */
         let leftBracket = "[".color(color_str.clone());
         let rightBracket = "]".color(color_str);
         match piece_type {
@@ -90,20 +92,23 @@ struct Board {
 impl Board {
     fn new() -> Board {
         let mut squares = [[Square {piece: None, color: (Color::Undef) }; 8]; 8]; //Maybe change this?
+        /* This is dumb *//* This is dumb *//* This is dumb *//* This is dumb *//* This is dumb */
         let mut index1: u16;
         let mut index2: u16;
 
         for index in 0..8 {
-            let mut piece_color: Color = Color::Undef;
-            match &index {
+            let mut piece_color: Color = Color::Undef; /* This is dumb */
+            match &index { /* This is dumb */
                 0 | 1 => piece_color = Color::White,
                 6 | 7 => piece_color = Color::Black,
                 _ => {}
             }
+
             match index {
                 //Populating first and back row
                 0 | 7 => {
                     for innerIndex in 0..8 {
+                        /* This is dumb */
                         index1 = index.clone() as u16;
                         index2 = innerIndex.clone() as u16;
                         let color = Board::getColor(&index1, &index2);
@@ -111,8 +116,8 @@ impl Board {
                             0 | 7 => Piece{piece_type: piece_type::Rook, color: piece_color},
                             1 | 6 => Piece{piece_type: piece_type::Knight, color: piece_color},
                             2 | 5 => Piece{piece_type: piece_type::Bishop, color: piece_color},
-                            3 => Piece{piece_type: piece_type::King, color: piece_color},
-                            4 => Piece{piece_type: piece_type::Queen, color: piece_color},
+                            3 => Piece{piece_type: piece_type::Queen, color: piece_color},
+                            4 => Piece{piece_type: piece_type::King, color: piece_color},
                             _ => {panic!("Not a valid piece type")}
                         };
                         squares[index][innerIndex] = Square{ piece: Some(piece), color};
@@ -121,6 +126,7 @@ impl Board {
                 //Matching pawn rows
                 1 | 6 => { 
                     for innerIndex in 0..8 {
+                        /* This is dumb */
                         let piece = Piece{piece_type: piece_type::Pawn, color: piece_color};
                         index1 = index.clone() as u16;
                         index2 = innerIndex.clone() as u16;
@@ -130,6 +136,7 @@ impl Board {
                 },
                 _ => {
                     for innerIndex in 0..8 {
+                        /* This is dumb */
                         index1 = index.clone() as u16;
                         index2 = innerIndex.clone() as u16;
                         squares[index][innerIndex] = Square {piece : None, color: Board::getColor(&index1, &index2)};
