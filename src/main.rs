@@ -1,4 +1,3 @@
-mod piece;
 use colored::*;
 
 /* Enumeration for a color for squares and pieces */
@@ -6,33 +5,33 @@ use colored::*;
 enum Color {
     White,
     Black,
-    Undef, /* This is dumb */
+    Undef, //Place holder value, used for instantiation
 }
-
+/* Simple 1 - 1 map function from each type of color to a corresponding string */ 
 fn color_to_string(color: Color) -> String {
     match color {
-        Color::White => String::from("white"),
-        Color::Black => String::from("blue"),
-        Undef => String::from("red"), //NEED TO DO BETTER ERROR HANDLING
+        Color::White => String::from("white"), 
+        Color::Black => String::from("blue"), //We are using blue until we graduate from a CLI program
+        Color::Undef => String::from("red"), //If anything is red, something went wrong
     }
 }
 
 /* Enumeration for a piece type */ 
 #[derive(Clone, Copy)]
-pub enum piece_type {
+pub enum PieceType {
     King, 
     Queen, 
     Bishop,
     Knight,
     Rook,
     Pawn,
-    None,
+    None, //Placeholder, used for instantiation
 }
 
 /* A piece consists of a type and a color */
 #[derive(Clone, Copy)]
 pub struct Piece {
-    piece_type: piece_type,
+    piece_type: PieceType,
     color: Color,
 }
 
@@ -45,101 +44,108 @@ struct Square {
 
 /* Squares start with nothing on it and a piece on that square */ 
 impl Square {
+    /* Simple constructor for a new square */
     pub fn new(square_piece: Option<Piece>, square_color: Color) -> Square {
         Square {piece: square_piece, color: square_color}
     }
 
+    /* Creates a string representation of the square */
     fn symbol(&self) -> String {
-        /* This is dumb */
-        let mut color_str: String; //Change to String later maybe?
-        match self.color {
-            Color::White => color_str = String::from("white"),
-            _ => color_str = String::from("blue"), //FIX THIS, IT CAN BE NONE!!!!!
-        }
-        /* This is dumb */
-        let mut piece_type;
-        let mut piece_color; 
+        let square_color = match self.color {
+            Color::White => String::from("white"),
+            Color::Black => String::from("blue"),
+            Color::Undef => String::from("red"),
+        };
+
+        //Variables to hold the piece type and pice color
+        let square_piece_type: PieceType;
+        let piece_color: String; //String for now due to being a CLI program
         match self.piece {
-            Some(x) => {
-                piece_type = self.piece.unwrap().piece_type;
+            Some(_) => {
+                square_piece_type = self.piece.unwrap().piece_type;
                 piece_color = color_to_string(self.piece.unwrap().color);
             },
             None => {
-                piece_type = piece_type::None;
+                square_piece_type = PieceType::None;
                 piece_color = color_to_string(Color::Undef);
             },
         };
-        /* This is dumb */
-        let leftBracket = "[".color(color_str.clone());
-        let rightBracket = "]".color(color_str);
-        match piece_type {
-            piece_type::King   => format!("{}{}{}", leftBracket, "K".color(piece_color), rightBracket),
-            piece_type::Queen  => format!("{}{}{}", leftBracket, "Q".color(piece_color), rightBracket),
-            piece_type::Rook   => format!("{}{}{}", leftBracket, "R".color(piece_color), rightBracket),
-            piece_type::Bishop => format!("{}{}{}", leftBracket, "B".color(piece_color), rightBracket),
-            piece_type::Knight => format!("{}{}{}", leftBracket, "N".color(piece_color), rightBracket),
-            piece_type::Pawn  => format!("{}{}{}", leftBracket, "p".color(piece_color), rightBracket),
-            piece_type::None => format!("{}{}{}", leftBracket, " ", rightBracket),
+
+        let (left_bracket, right_bracket) = ("[".color(square_color.clone()), "]".color(square_color)); //This is unelegant, but it works
+        match square_piece_type {
+            PieceType::King   => format!("{}{}{}", left_bracket, "♚".color(piece_color), right_bracket),
+            PieceType::Queen  => format!("{}{}{}", left_bracket, "♛".color(piece_color), right_bracket),
+            PieceType::Rook   => format!("{}{}{}", left_bracket, "♜".color(piece_color), right_bracket),
+            PieceType::Bishop => format!("{}{}{}", left_bracket, "♝".color(piece_color), right_bracket),
+            PieceType::Knight => format!("{}{}{}", left_bracket, "♞".color(piece_color), right_bracket),
+            PieceType::Pawn  => format!("{}{}{}", left_bracket, "♟︎".color(piece_color), right_bracket),
+            PieceType::None => format!("{}{}{}", left_bracket, " ", right_bracket),
         }
     }
 
 }
 
+/* A board is a 8x8 array of squares */
 struct Board {
     squares: [[Square; 8]; 8]
 }
 
 impl Board {
+    /* Creating an empty board */
+
+    /* GOAL: TODO change this to support FEN NOTATION */ 
     fn new() -> Board {
-        let mut squares = [[Square {piece: None, color: (Color::Undef) }; 8]; 8]; //Maybe change this?
-        /* This is dumb *//* This is dumb *//* This is dumb *//* This is dumb *//* This is dumb */
+        //Creating an 8x8 array of uninitialized arrays
+        let mut squares = [[Square {piece: None, color: (Color::Undef) }; 8]; 8]; 
+
+        /* All of the below code initialized a basic 8x8 board. It is very inelegant, and
+        the need for FEN notation is apparent */
         let mut index1: u16;
         let mut index2: u16;
-
         for index in 0..8 {
-            let mut piece_color: Color = Color::Undef; /* This is dumb */
-            match &index { /* This is dumb */
-                0 | 1 => piece_color = Color::White,
-                6 | 7 => piece_color = Color::Black,
-                _ => {}
-            }
+            //Getting the color of a piece if one exists on this square 
+            let piece_color = match index { 
+                0 | 1 => Color::White,
+                6 | 7 => Color::Black,
+                _ => Color::Undef, //Risky
+            };
 
             match index {
                 //Populating first and back row
                 0 | 7 => {
-                    for innerIndex in 0..8 {
+                    for inner_index in 0..8 {
                         /* This is dumb */
                         index1 = index.clone() as u16;
-                        index2 = innerIndex.clone() as u16;
-                        let color = Board::getColor(&index1, &index2);
-                        let piece = match innerIndex {
-                            0 | 7 => Piece{piece_type: piece_type::Rook, color: piece_color},
-                            1 | 6 => Piece{piece_type: piece_type::Knight, color: piece_color},
-                            2 | 5 => Piece{piece_type: piece_type::Bishop, color: piece_color},
-                            3 => Piece{piece_type: piece_type::Queen, color: piece_color},
-                            4 => Piece{piece_type: piece_type::King, color: piece_color},
+                        index2 = inner_index.clone() as u16;
+                        let color = Board::get_color(index1, index2);
+                        let piece = match inner_index {
+                            0 | 7 => Piece{piece_type: PieceType::Rook, color: piece_color},
+                            1 | 6 => Piece{piece_type: PieceType::Knight, color: piece_color},
+                            2 | 5 => Piece{piece_type: PieceType::Bishop, color: piece_color},
+                            3 => Piece{piece_type: PieceType::Queen, color: piece_color},
+                            4 => Piece{piece_type: PieceType::King, color: piece_color},
                             _ => {panic!("Not a valid piece type")}
                         };
-                        squares[index][innerIndex] = Square{ piece: Some(piece), color};
+                        squares[index][inner_index] = Square{ piece: Some(piece), color};
                     }
                 }, 
                 //Matching pawn rows
                 1 | 6 => { 
-                    for innerIndex in 0..8 {
+                    for inner_index in 0..8 {
                         /* This is dumb */
-                        let piece = Piece{piece_type: piece_type::Pawn, color: piece_color};
+                        let piece = Piece{piece_type: PieceType::Pawn, color: piece_color};
                         index1 = index.clone() as u16;
-                        index2 = innerIndex.clone() as u16;
-                        let color = Board::getColor(&index1, &index2);
-                        squares[index][innerIndex] = Square { piece: Some(piece), color};
+                        index2 = inner_index.clone() as u16;
+                        let color = Board::get_color(index1, index2);
+                        squares[index][inner_index] = Square { piece: Some(piece), color};
                     }
                 },
                 _ => {
-                    for innerIndex in 0..8 {
+                    for inner_index in 0..8 {
                         /* This is dumb */
                         index1 = index.clone() as u16;
-                        index2 = innerIndex.clone() as u16;
-                        squares[index][innerIndex] = Square {piece : None, color: Board::getColor(&index1, &index2)};
+                        index2 = inner_index.clone() as u16;
+                        squares[index][inner_index] = Square {piece : None, color: Board::get_color(index1, index2)};
                     }
                 }
             }
@@ -147,7 +153,8 @@ impl Board {
         Board { squares }
     }
     
-    fn getColor(val1: &u16, val2: &u16) -> Color {
+    /* Gets the color of a board from its coordinates */
+    fn get_color(val1: u16, val2: u16) -> Color {
         match val1 {
             0 | 2 | 4 | 6 => {
                 match val2 {
@@ -164,11 +171,11 @@ impl Board {
         }
     }
 
-    fn printBoard(&self) {
+    fn print_board(&self) {
         for index in (0..8).rev() {
             print!("[{}]", index + 1);
-            for innerIndex in 0..8 {
-                print!("{}", self.squares[index][innerIndex].symbol());
+            for inner_index in 0..8 {
+                print!("{}", self.squares[index][inner_index].symbol());
             }
             print!("\n");
         }
@@ -178,5 +185,14 @@ impl Board {
 
 fn main() {
     let board = Board::new();
-    board.printBoard();
+    //Add loop here, take in a move as input
+    //If the move is invalid, keep taking the move in
+    //Assess the move (is the game over or not?)
+    //Print the board after the move, 
+    //Loop
+    board.print_board();
+    //board.move(coord1, coord2)
+    //Have to make exceptions for castling 0 - 0 and pawn promotion e4 - e5Q
+    //Need to make functoin that checks if a king is in check given a board state and color of the king
+    //This is so we can do stuff like (the only valid moves are the one that get you out of checkl)
 }
