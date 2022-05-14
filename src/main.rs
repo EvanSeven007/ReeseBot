@@ -94,7 +94,7 @@ struct BoardState {
     squares: [[Square; 8]; 8],
     active_color: Color, 
     can_castle_white_kingside: bool,
-    can_casatle_white_queenside: bool,
+    can_castle_white_queenside: bool,
     can_castle_black_kingside: bool, 
     can_castle_black_queenside: bool,
     en_passant: Option<position>,
@@ -154,14 +154,14 @@ impl BoardState {
         };
 
         let mut can_castle_white_kingside = false;
-        let mut can_casatle_white_queenside = false;
+        let mut can_castle_white_queenside = false;
         let mut can_castle_black_kingside = false;
         let mut can_castle_black_queenside = false;
         /* This is unforgiveably stupid */
         for fen_entry in fen_strings[2].chars() {
             match fen_entry {
                 'K' => can_castle_white_kingside = true,
-                'Q' => can_casatle_white_queenside = true,
+                'Q' => can_castle_white_queenside = true,
                 'k' => can_castle_black_kingside = true,
                 'q' => can_castle_black_queenside = true,
                 '-' => {},
@@ -200,7 +200,7 @@ impl BoardState {
             return Err("fen string enpassant malformed!")
         }
 
-        Ok(BoardState { squares, active_color, can_castle_white_kingside, can_casatle_white_queenside, can_castle_black_kingside, can_castle_black_queenside, en_passant })
+        Ok(BoardState { squares, active_color, can_castle_white_kingside, can_castle_white_queenside, can_castle_black_kingside, can_castle_black_queenside, en_passant })
     }
 
 
@@ -265,7 +265,7 @@ fn main() {
     //TODO
     //Make a move parser
     //takes in a string and returns a Result<Move>
-    
+
     //Make a move struct
     //This will consist of fields about a given move
     //Move types can be: moving one piece from one square to another, 
