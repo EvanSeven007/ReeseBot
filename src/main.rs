@@ -85,10 +85,43 @@ impl Square {
 
 }
 
-struct position {
+struct Position {
     x: usize,
     y: usize,
 }
+
+enum MoveType {
+    standard(StandardMove), //move a piece from one square to another
+    castle(CastleMove), //Castling 
+    promotion(PromotionMove), //upgrade pawn by getting to the back row
+}
+
+struct StandardMove { //enpassant is in this?
+    before: Position, 
+    after: Position, 
+    piece_moved: Piece, 
+    is_capture: bool,
+    piece_captured: Option<Piece>, 
+    is_enpassant: bool,
+}
+
+struct CastleMove {
+    is_kingside: bool, //Else queenside
+}
+
+struct PromotionMove {
+    after: Position,
+    promote_to: Piece,
+
+}
+
+struct Move {
+    move_type: MoveType,
+    in_play: Color, 
+    is_check: bool,
+    is_mate: bool, 
+}
+
 /* A board is a 8x8 array of squares */
 struct BoardState {
     squares: [[Square; 8]; 8],
@@ -97,7 +130,7 @@ struct BoardState {
     can_castle_white_queenside: bool,
     can_castle_black_kingside: bool, 
     can_castle_black_queenside: bool,
-    en_passant: Option<position>,
+    en_passant: Option<Position>,
     //Todo halfmove
     //Todo full move
     
@@ -126,7 +159,7 @@ impl BoardState {
         }
 
         let fen_strings: Vec<&str> = fen.split(' ').collect();
-        if(fen_strings.len() != 6) {
+        if fen_strings.len() != 6 {
             return Err("Invalid fen string!");
         }
 
@@ -169,7 +202,7 @@ impl BoardState {
             }
         }
         //Variables for enpassant goodness
-        let mut en_passant: Option<position>;
+        let mut en_passant: Option<Position>;
         let x: usize;
         let y: usize;
         if fen_strings[3].len() == 1 && fen_strings[3] == "-" {
@@ -195,7 +228,7 @@ impl BoardState {
             if y > 7 {
                 return Err("fen string enpassant malformed!")
             }
-            en_passant = Some(position{ x, y });
+            en_passant = Some(Position{ x, y });
         } else {
             return Err("fen string enpassant malformed!")
         }
@@ -229,55 +262,175 @@ impl BoardState {
             0 | 2 | 4 | 6 => {
                 match val2 {
                     1 | 3 | 5 | 7 => Color::White,
-                    _ => Color::Black,
+                    0 | 2 | 4 | 6 => Color::Black,
+                    _ => panic!("not a valid coordinate! {} {}", val1, val2),
                 }
             }
             _ => {
                 match val2 {
                     1 | 3 | 5 | 7 => Color::Black,
-                    _ => Color::White,
+                    0 | 2 | 4 | 6 => Color::White,
+                    _ => panic!("not a valid coordinate! {} {}", val1, val2),
                 }
+            }
+        }
+    }
+
+    /* Updates a board state given a move, which was already been prechecked to be valid */
+
+    /* Mut self??????*/
+    fn make_move(&mut self, current_move: Move) {
+        let move_type: MoveType = current_move.move_type;
+        match move_type {
+            /* How to get value of enumeration? */
+            MoveType::standard(val) => {
+                let standard_move: StandardMove = val;
+                let before_x = standard_move.before.x;
+                let before_y = standard_move.before.y;
+                let after_x = standard_move.after.x;
+                let after_y = standard_move.after.y;
+                self.squares[before_x][before_y].piece = None;
+                self.squares[after_x][after_y].piece = Some(standard_move.piece_moved);
+
+            },
+
+            MoveType::castle(val) => {
+                if val.is_kingside  {
+                    match self.active_color {
+                        Color::White => {
+                            println!("got here 1");
+                            self.squares[7][4].piece = None;
+                            self.squares[7][7].piece = None;
+                            self.squares[7][6].piece = Some(Piece {piece_type: PieceType::King, color: Color::White });
+                            self.squares[7][5].piece = Some(Piece {piece_type: PieceType::Rook, color: Color:: White });
+                        }, 
+                        Color::Black => {
+                            println!("got here 2");
+                            self.squares[0][4].piece = None;
+                            self.squares[0][7].piece = None;
+                            self.squares[0][6].piece = Some(Piece {piece_type: PieceType::King, color: Color::Black });
+                            self.squares[0][5].piece = Some(Piece {piece_type: PieceType::Rook, color: Color:: Black });
+
+                        },
+                        Color::Undef => panic!("Trying to make move on uninitialized board!"),
+                    }
+                } else {
+                    match self.active_color {
+                        Color::White => {
+                            self.squares[7][4].piece = None;
+                            self.squares[7][0].piece = None;
+                            self.squares[7][2].piece = Some(Piece {piece_type: PieceType::King, color: Color::White });
+                            self.squares[7][3].piece = Some(Piece {piece_type: PieceType::Rook, color: Color:: White });
+                        }, 
+                        Color::Black => {
+                            self.squares[0][4].piece = None;
+                            self.squares[0][0].piece = None;
+                            self.squares[0][2].piece = Some(Piece {piece_type: PieceType::King, color: Color::Black });
+                            self.squares[0][3].piece = Some(Piece {piece_type: PieceType::Rook, color: Color:: Black });
+
+                        },
+                        Color::Undef => panic!("Trying to make move on uninitialized board!"),
+                    }
+                }
+            },
+            MoveType::promotion(val) => {
+                let color: Color = val.promote_to.color;
+                let x = val.after.x;
+                let y = val.after.y;
+                self.squares[x - 1][y - 1].piece = None;
+                self.squares[x - 1][y - 1].piece = Some(val.promote_to);
             }
         }
     }
 
     fn print_board(&self) {
         for index in 0..8 {
-            print!("[{}]", index + 1);
+            print!("[{}]", index);
             for inner_index in 0..8 {
                 print!("{}", self.squares[index][inner_index].symbol());
             }
             print!("\n");
         }
-        println!("   [a][b][c][d][e][f][g][h]");
+        println!("   [0][1][2][3][4][5][6][7]");
     }
 }
 
 
 fn main() {
-    let board_state = "1R3b1r/p1ppkpp1/2n4n/4p3/p1b1P1B1/NpB2N2/PPP1rPPP/3QK2R b - - 0 1";
+    let board_state = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     let board = BoardState::new(board_state);
+
     match board {
-        Ok(_) => board.unwrap().print_board(),
+        Ok(_) => {
+                let mut board_state: BoardState = board.unwrap();
+                board_state.print_board();
+                let mut curr_move: Move = Move {move_type: MoveType::standard(StandardMove {
+                    before: Position{x:6, y: 4},
+                    after: Position{x: 4, y: 4},
+                    piece_moved: Piece {piece_type: PieceType::Pawn, color: Color::White},
+                    is_capture: false,
+                    piece_captured: None, 
+                    is_enpassant: false,
+                }), in_play: Color::White, is_check: false, is_mate: false};
+                board_state.make_move(curr_move);
+                curr_move = Move {move_type: MoveType::standard(StandardMove {
+                    before: Position{x:1, y: 4},
+                    after: Position{x: 3, y: 4},
+                    piece_moved: Piece {piece_type: PieceType::Pawn, color: Color::Black},
+                    is_capture: false,
+                    piece_captured: None, 
+                    is_enpassant: false,
+                }), in_play: Color::Black, is_check: false, is_mate: false};
+                board_state.make_move(curr_move);
+                curr_move = Move {move_type: MoveType::standard(StandardMove {
+                    before: Position{x:7, y: 6},
+                    after: Position{x: 5, y: 5},
+                    piece_moved: Piece {piece_type: PieceType::Knight, color: Color::White},
+                    is_capture: false,
+                    piece_captured: None, 
+                    is_enpassant: false,
+                }), in_play: Color::White, is_check: false, is_mate: false};
+                board_state.make_move(curr_move);
+                curr_move = Move {move_type: MoveType::standard(StandardMove {
+                    before: Position{x:0, y: 1},
+                    after: Position{x: 2, y: 2},
+                    piece_moved: Piece {piece_type: PieceType::Knight, color: Color::Black},
+                    is_capture: false,
+                    piece_captured: None, 
+                    is_enpassant: false,
+                }), in_play: Color::Black, is_check: false, is_mate: false};
+                board_state.make_move(curr_move);
+                curr_move = Move {move_type: MoveType::standard(StandardMove {
+                    before: Position{x:7, y: 5},
+                    after: Position{x: 3, y: 1},
+                    piece_moved: Piece {piece_type: PieceType::Bishop, color: Color::White},
+                    is_capture: false,
+                    piece_captured: None, 
+                    is_enpassant: false,
+                }), in_play: Color::White, is_check: false, is_mate: false};
+                board_state.make_move(curr_move);
+                curr_move = Move {move_type: MoveType::standard(StandardMove {
+                    before: Position{x:1, y: 0},
+                    after: Position{x: 2, y: 0},
+                    piece_moved: Piece {piece_type: PieceType::Pawn, color: Color::Black},
+                    is_capture: false,
+                    piece_captured: None, 
+                    is_enpassant: false,
+                }), in_play: Color::Black, is_check: false, is_mate: false};
+                board_state.make_move(curr_move);
+                board_state.print_board();
+            },
         Err(e) => println!("{}", e),
     }
-    
-    //TODO
-    //Make a move parser
-    //takes in a string and returns a Result<Move>
 
-    //Make a move struct
-    //This will consist of fields about a given move
-    //Move types can be: moving one piece from one square to another, 
-        //Subset of these are captures
-    //castles
-    //enpassant
-    //All moves can be checks
-    
-    //Move logic will ensure that the move is valid
-    //That is, the move is possible (i.e. not allowing a rook to skip over squares)
-    //Ensuring that a capture is indeed a capture (i.e. if the user writes exd5 then the program will ensure that a pawn exists that can take a pawn on d5)
-    //Ensuring the move is legal (not leaving a king in check)
-    //Probably many more edge cases
-    //
+    //Next idea is to make a function that generates all possible moves from a given position
+        //This is computationally not as bad as it seems, as the number of possible moves from a given position is almost always < 100
+    //Then, take in a move parser that simply takes in a move and tries to find a corresponding move in the move_set that corresponds to it,
+        //as in the user writes "Nf5" and then it creates a Knight move move, and then tries to find the corresponding move the move set and use board.make_move()
+    //If none exist or error with prompting => ask the user for another input
+    //Finally, we will do some testing with a couple of full games. 
+
+    //Then, we do some refactoring to get rid of inevitable redudancy
+
+    //Then, it's algorithm time!!
 }
