@@ -15,6 +15,13 @@ impl Square {
         Square {piece: square_piece, color: square_color}
     }
 
+    pub fn is_occupied(&self) -> bool {
+        match self.piece {
+            Some(_) => true,
+            None => false,
+        }
+    }
+
     /* Creates a string representation of the square */
     pub fn symbol(&self) -> String {
         let square_color = match self.color {

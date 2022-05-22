@@ -1,9 +1,15 @@
 use crate::piece::{Piece};
-use crate::color::Color;
 /* Position in on a board */ 
+#[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub struct Position {
     pub x: usize,
     pub y: usize,
+}
+
+impl Position {
+    pub fn swap(&self) -> Position {
+        Position {x: self.y, y: self.x}
+    }
 }
 
 /* All moves are of one of three types */ 
@@ -36,8 +42,5 @@ pub struct PromotionMove {
 /* A move */ 
 pub struct Move {
     pub move_type: MoveType,
-    pub is_check: bool,
-    pub is_mate: bool, 
-    pub is_capture: bool,
     pub piece_captured: Option<Piece>, 
 }

@@ -2,10 +2,12 @@ use crate::square::*;
 use crate::piece::*;
 use crate::color::*;
 use crate::chess_move::*;
+use std::collections::HashSet;
 
 /* A board is a 8x8 array of squares */
+#[derive(Clone, Copy)]
 pub struct BoardState {
-    pub squares: [[Square; 8]; 8],
+    pub squares: [[Square; 10]; 10],
     pub active_color: Color, 
     pub can_castle_white_kingside: bool,
     pub can_castle_white_queenside: bool,
@@ -23,10 +25,10 @@ impl BoardState {
     /* Creates a board state from a FEN string */
     pub fn new(fen: &str) -> Result<BoardState, &str> {
         //Creating an 8x8 array of uninitialized arrays
-        let mut squares = [[Square {piece: None, color: (Color::White) }; 8]; 8]; //Setting to white and then updating later
+        let mut squares = [[Square {piece: None, color: (Color::White) }; 10]; 10]; //Setting to white and then updating later
         //Assigning colors, but not charged
-        for index in 0..8 {
-            for inner_index in 0..8 {
+        for index in 1..9  {
+            for inner_index in 1..9 {
                 squares[index][inner_index].color = BoardState::get_color(&index, &inner_index);
             }
         }
@@ -50,12 +52,12 @@ impl BoardState {
         let mut row_string: &str; //String that stores the current row info
         for row in 0..8 {
             row_string = position_str[row];
-            col = 0;
+            col = 1;
             for fen_entry in row_string.chars() {
                 if fen_entry.is_digit(10) {
                     col += fen_entry.to_digit(10).unwrap() as usize;
                 } else {
-                    squares[row][col].piece = BoardState::parse_fen_entry(&fen_entry).unwrap();
+                    squares[row + 1][col].piece = BoardState::parse_fen_entry(&fen_entry).unwrap();
                     col += 1;
                 }
             }
@@ -83,7 +85,7 @@ impl BoardState {
             }
         }
         //Variables for enpassant goodness
-        let mut en_passant: Option<Position>;
+        let en_passant: Option<Position>;
         let x: usize;
         let y: usize;
         if fen_strings[3].len() == 1 && fen_strings[3] == "-" {
@@ -140,20 +142,21 @@ impl BoardState {
     /* Gets the color of a board from its coordinates */
     fn get_color(val1: &usize, val2: &usize) -> Color {
         match val1 {
-            0 | 2 | 4 | 6 => {
+             2 | 4 | 6 | 8 => {
                 match val2 {
                     1 | 3 | 5 | 7 => Color::White,
-                    0 | 2 | 4 | 6 => Color::Black,
+                    2 | 4 | 6 | 8 => Color::Black,
                     _ => panic!("not a valid coordinate! {} {}", val1, val2),
                 }
             }
-            _ => {
+            1 | 3 | 5 | 7 => {
                 match val2 {
                     1 | 3 | 5 | 7 => Color::Black,
-                    0 | 2 | 4 | 6 => Color::White,
-                    _ => panic!("not a valid coordinate! {} {}", val1 + 1, val2 + 1),
+                    2 | 4 | 6 | 8 => Color::White,
+                    _ => panic!("not a valid coordinate! {} {}", val1, val2),
                 }
             }
+            _ => panic!("Not a valid coordinate {}{}", val1, val2)
         }
     }
 
@@ -174,33 +177,33 @@ impl BoardState {
                     match self.active_color {
                         Color::White => {
                             println!("got here 1");
-                            self.squares[7][4].piece = None;
-                            self.squares[7][7].piece = None;
-                            self.squares[7][6].piece = Some(Piece {piece_type: PieceType::King, color: Color::White });
-                            self.squares[7][5].piece = Some(Piece {piece_type: PieceType::Rook, color: Color:: White });
+                            self.squares[8][5].piece = None;
+                            self.squares[8][8].piece = None;
+                            self.squares[8][7].piece = Some(Piece {piece_type: PieceType::King, color: Color::White });
+                            self.squares[8][6].piece = Some(Piece {piece_type: PieceType::Rook, color: Color:: White });
                         }, 
                         Color::Black => {
                             println!("got here 2");
-                            self.squares[0][4].piece = None;
-                            self.squares[0][7].piece = None;
-                            self.squares[0][6].piece = Some(Piece {piece_type: PieceType::King, color: Color::Black });
-                            self.squares[0][5].piece = Some(Piece {piece_type: PieceType::Rook, color: Color:: Black });
+                            self.squares[1][5].piece = None;
+                            self.squares[1][8].piece = None;
+                            self.squares[1][7].piece = Some(Piece {piece_type: PieceType::King, color: Color::Black });
+                            self.squares[1][6].piece = Some(Piece {piece_type: PieceType::Rook, color: Color:: Black });
 
                         },
                     }
                 } else {
                     match self.active_color {
                         Color::White => {
-                            self.squares[7][4].piece = None;
-                            self.squares[7][0].piece = None;
-                            self.squares[7][2].piece = Some(Piece {piece_type: PieceType::King, color: Color::White });
-                            self.squares[7][3].piece = Some(Piece {piece_type: PieceType::Rook, color: Color:: White });
+                            self.squares[8][5].piece = None;
+                            self.squares[8][1].piece = None;
+                            self.squares[8][3].piece = Some(Piece {piece_type: PieceType::King, color: Color::White });
+                            self.squares[8][4].piece = Some(Piece {piece_type: PieceType::Rook, color: Color:: White });
                         }, 
                         Color::Black => {
-                            self.squares[0][4].piece = None;
-                            self.squares[0][0].piece = None;
-                            self.squares[0][2].piece = Some(Piece {piece_type: PieceType::King, color: Color::Black });
-                            self.squares[0][3].piece = Some(Piece {piece_type: PieceType::Rook, color: Color:: Black });
+                            self.squares[1][5].piece = None;
+                            self.squares[1][1].piece = None;
+                            self.squares[1][3].piece = Some(Piece {piece_type: PieceType::King, color: Color::Black });
+                            self.squares[1][4].piece = Some(Piece {piece_type: PieceType::Rook, color: Color:: Black });
 
                         },
                     }
@@ -218,15 +221,201 @@ impl BoardState {
             Color::White => self.active_color = Color::Black, 
         };
     }
+    
+    pub fn is_valid_position(pos: Position) -> bool {
+        return pos.x >= 1 && pos.x <= 8 && pos.y >= 1 && pos.y <= 8;
+    }
+
+    /* Checks if the king is in check given a certain position */
+    fn is_in_check(&self, king_color: Color) -> bool {
+        //For each piece in this set, generate all squares they look at, if square contains opposite king, return true
+        //Generate squares by matching on piece. 
+        return false;
+    }
+
+    pub fn gen_all_moves(&self) -> Vec<Move> {
+        /* Storing the positions of the white and black pieces */
+        let mut white_pieces_pos: HashSet<Position> = HashSet::new();
+        let mut black_pieces_pos: HashSet<Position> = HashSet::new();
+        for x in 1..9 {
+            for y in 1..9 {
+                let curr_piece: Option<Piece> = self.squares[x][y].piece;
+                match curr_piece {
+                    Some(val) => {
+                        match val.color {
+                            Color::White => {white_pieces_pos.insert(Position { x, y });},
+                            Color::Black => {black_pieces_pos.insert(Position { x, y });},
+                        }
+                    },
+                    None => {},
+                }
+            }
+        }
+        
+        /* Current set is the one we are on */
+        let curr_set: HashSet<Position>;
+        match self.active_color {
+            Color::White => {curr_set = white_pieces_pos},
+            Color::Black => {curr_set = black_pieces_pos},
+        }
+
+        let mut move_set: Vec<Move> = Vec::new(); /* change this to a set later */
+        let mut curr_piece: Piece;
+        for pos in &curr_set {
+            curr_piece = self.squares[pos.x][pos.y].piece.unwrap(); //Guarantted to not be None
+            match curr_piece.piece_type {
+                /*
+                * Pawn Moves
+                */
+                PieceType::Pawn => {
+                    /* Looking to the left or right */
+                    let right: Position;
+                    let left: Position;
+                    let oneup: Position;
+                    let twoup: Position;
+                    
+                    /* Are we on the first pawn move? are we on a promotion? */
+                    let first_move: bool;
+                    let is_promotion: bool; 
+                    
+                    /* Going forwards or backwards depending on piece color */ 
+                    match curr_piece.color {
+                        Color::White => {
+                            right = Position {x: pos.x - 1, y: pos.y + 1};
+                            left = Position {x: pos.x - 1, y: pos.y - 1};
+                            oneup = Position {x: pos.x - 1, y: pos.y};
+                            twoup =  Position {x: pos.x - 2, y: pos.y};
+                            //Figure these out
+                            first_move = pos.x == 7;
+                            is_promotion = pos.x == 2;
+                        },
+                        Color::Black => {
+                            right = Position {x: pos.x - 1, y: pos.y + 1};
+                            left = Position {x: pos.x - 1, y: pos.y - 1};
+                            oneup = Position {x: pos.x + 1, y: pos.y};
+                            twoup =  Position {x: pos.x + 2, y: pos.y};
+                            //Figure these out
+                            first_move = pos.x == 2;
+                            is_promotion = pos.x - 1 == 7;
+                        }
+                    }
+                    if !is_promotion {
+                        /* Capturing a piece but not a promotion */
+                        if self.squares[right.x][right.y].is_occupied() {
+                            let captured = self.squares[right.x][right.y].piece.unwrap();
+                            if captured.color == curr_piece.color.opposite() {
+                                println!("Capturing Not Promotion");
+                                move_set.push(Move { move_type: MoveType::standard(StandardMove {
+                                    before: Position {x: pos.x, y: pos.y},
+                                    after: Position{x: right.x, y: right.y},
+                                    piece_moved: curr_piece, 
+                                    is_enpassant: false,
+                                }), piece_captured: Some(captured)});
+                            }
+                        }
+                        if self.squares[left.x][left.y].is_occupied() {
+                            let captured = self.squares[left.x][left.y].piece.unwrap();
+                            if captured.color == curr_piece.color.opposite() {
+                                println!("Capturing Not Promotion");
+                                move_set.push(Move { move_type: MoveType::standard(StandardMove {
+                                    before: Position {x: pos.x, y: pos.y},
+                                    after: Position{x: left.x, y: left.y},
+                                    piece_moved: curr_piece, 
+                                    is_enpassant: false,
+                                }), piece_captured: Some(captured)});
+                            }
+                        }
+                        if first_move && !self.squares[twoup.x][twoup.y].is_occupied() {
+                            println!("Push 2");
+                            move_set.push(Move { move_type: MoveType::standard(StandardMove {
+                                before: Position {x: pos.x, y: pos.y},
+                                after: Position{x: twoup.x, y: twoup.y},
+                                piece_moved: curr_piece, 
+                                is_enpassant: false,
+                            }), piece_captured: None});
+                        }
+
+                        if !self.squares[oneup.x][oneup.y].is_occupied() {
+                            println!("Push 1");
+                            move_set.push(Move { move_type: MoveType::standard(StandardMove {
+                                before: Position {x: pos.x, y: pos.y},
+                                after: Position{x: oneup.x, y: oneup.y},
+                                piece_moved: curr_piece, 
+                                is_enpassant: false,
+                            }), piece_captured: None});
+                        }
+                    } else {
+                         /* Capturing a piece and it is a promotion */
+                        if self.squares[right.x][right.y].is_occupied() {
+                            let captured = self.squares[right.x][right.y].piece.unwrap();
+                            if captured.color == curr_piece.color.opposite() {
+                                println!("Capturing Promoion");
+                                move_set.push(Move { move_type: MoveType::promotion(PromotionMove {
+                                    before: Position {x: pos.x, y: pos.y},
+                                    after: Position{x: right.x, y: right.y},
+                                    promote_to: Piece {piece_type: PieceType::Queen, color: curr_piece.color}
+                                }), piece_captured: None});
+                            }
+                        }
+
+                        if self.squares[left.x][left.y].is_occupied() {
+                            let captured = self.squares[left.x][left.y].piece.unwrap();
+                            if captured.color == curr_piece.color.opposite() {
+                                println!("Capturing Promotion");
+                                move_set.push(Move { move_type: MoveType::promotion(PromotionMove {
+                                    before: Position {x: pos.x, y: pos.y},
+                                    after: Position{x: left.x, y: left.y},
+                                    promote_to: Piece {piece_type: PieceType::Queen, color: curr_piece.color}
+                                }), piece_captured: None});
+                            }
+                        }
+                        /* only allowing queen promotions for now */ 
+                        if !self.squares[oneup.x][oneup.y].is_occupied() {
+                            move_set.push(Move { move_type: MoveType::promotion(PromotionMove {
+                                before: Position {x: pos.x, y: pos.y},
+                                after: Position{x: oneup.x, y: oneup.y},
+                                promote_to: Piece {piece_type: PieceType::Queen, color: curr_piece.color}
+                            }), piece_captured: None});
+                        }
+                    }
+
+                    //Check if enpassant /* TODO LATER */
+                },
+                PieceType::King => {
+                    //Move around 8 pieces
+                },
+                PieceType::Knight => {
+                    //Look at L jumps
+                },
+                PieceType::Rook => {
+                    //Look vertical and horizontal until you hit a piece
+                }
+                PieceType::Bishop => {
+                    //Look diagonally
+                },
+                PieceType::Queen => {
+                    //Look diagonally, vertically, and horizontally
+                },
+                PieceType::None => {},
+            }
+        }
+        //traverse board once, putting all pieces and their positions into two different sets
+        //for the piece set of appropriate color, try and generate every type of move
+        //Look through each generated move, make it and check if in check. (i.e. check if legal) if not legal remove it
+
+        //Each time a move is generated, check if it makes their side in check with the piece set previously generated, if not then add it
+        //If curr_set length is 0, then mate
+        return move_set;
+    }
 
     pub fn print_board(&self) {
-        for index in 0..8 {
+        for index in 1..9 {
             print!("[{}]", index);
-            for inner_index in 0..8 {
+            for inner_index in 1..9 {
                 print!("{}", self.squares[index][inner_index].symbol());
             }
             print!("\n");
         }
-        println!("   [0][1][2][3][4][5][6][7]");
+        println!("   [1][2][3][4][5][6][7][8]");
     }
 }

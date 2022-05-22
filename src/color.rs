@@ -1,7 +1,16 @@
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub enum Color {
     White,
     Black,
+}
+
+impl Color {
+    pub fn opposite(&self) -> Color {
+        match self {
+            Color::White => Color::Black,
+            Color::Black => Color::White,
+        }
+    }
 }
 
 /* Simple 1 - 1 map function from each type of color to a corresponding string */ 
