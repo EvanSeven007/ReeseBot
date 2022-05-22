@@ -221,10 +221,6 @@ impl BoardState {
             Color::White => self.active_color = Color::Black, 
         };
     }
-    
-    pub fn is_valid_position(pos: Position) -> bool {
-        return pos.x >= 1 && pos.x <= 8 && pos.y >= 1 && pos.y <= 8;
-    }
 
     /* Checks if the king is in check given a certain position */
     fn is_in_check(&self, king_color: Color) -> bool {
@@ -382,19 +378,58 @@ impl BoardState {
                     //Check if enpassant /* TODO LATER */
                 },
                 PieceType::King => {
-                    //Move around 8 pieces
+                    let possible_king_positions: Vec<Position> = vec![
+                        Position{x: pos.x - 1, y: pos.y - 1},
+                        Position{x: pos.x - 1, y: pos.y},
+                        Position{x: pos.x - 1, y: pos.y + 1},
+                        Position{x: pos.x, y: pos.y - 1},
+                        Position{x: pos.x, y: pos.y + 1},
+                        Position{x: pos.x + 1, y: pos.y - 1},
+                        Position{x: pos.x + 1, y: pos.y},
+                        Position{x: pos.x + 1, y: pos.y + 1},
+                    ];
+                    for cand in possible_king_positions {
+                        if !cand.is_valid_position() {
+                            continue;
+                        }
+
+                        if self.squares[cand.x][cand.y].is_occupied() {
+                            let captured = self.squares[cand.x][cand.y].piece.unwrap();
+                            if captured.color == self.active_color.opposite() {
+                                move_set.push(Move { move_type: MoveType::standard(StandardMove {
+                                    before: Position {x: pos.x, y: pos.y},
+                                    after: Position{x: cand.x, y: cand.y},
+                                    piece_moved: curr_piece, 
+                                    is_enpassant: false,
+                                }), piece_captured: Some(captured)});
+                            }
+                        } else {
+                            move_set.push(Move { move_type: MoveType::standard(StandardMove {
+                                before: Position {x: pos.x, y: pos.y},
+                                after: Position{x: cand.x, y: cand.y},
+                                piece_moved: curr_piece, 
+                                is_enpassant: false,
+                            }), piece_captured: None});
+                        }
+                    }
                 },
                 PieceType::Knight => {
                     //Look at L jumps
                 },
                 PieceType::Rook => {
                     //Look vertical and horizontal until you hit a piece
+                    //For four loops from 0..8, each stopping one a certain position
+                    //Store all possible positions, then add moves
+                    //Consider making a "generate rook moves"
                 }
                 PieceType::Bishop => {
-                    //Look diagonally
+                    //Look diagonally, for four loops
+                    //"Generate bishop moves"
                 },
                 PieceType::Queen => {
                     //Look diagonally, vertically, and horizontally
+                    //copy the loops from above
+                    //Vec.push(generatebishop moves, generate rook moves, )
                 },
                 PieceType::None => {},
             }

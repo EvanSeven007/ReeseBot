@@ -10,6 +10,10 @@ impl Position {
     pub fn swap(&self) -> Position {
         Position {x: self.y, y: self.x}
     }
+
+    pub fn is_valid_position(&self) -> bool {
+        return self.x >= 1 && self.x <= 8 && self.y >= 1 && self.y <= 8;
+    }
 }
 
 /* All moves are of one of three types */ 
