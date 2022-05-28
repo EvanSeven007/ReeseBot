@@ -10,11 +10,6 @@ pub struct Square {
 
 /* Squares start with nothing on it and a piece on that square */ 
 impl Square {
-    /* Simple constructor for a new square */
-    pub fn new(square_piece: Option<Piece>, square_color: Color) -> Square {
-        Square {piece: square_piece, color: square_color}
-    }
-
     pub fn is_occupied(&self) -> bool {
         match self.piece {
             Some(_) => true,
