@@ -1,4 +1,4 @@
-use crate::color::{Color, color_to_string};
+use crate::color::{Color};
 use crate::piece::{Piece, PieceType};
 use colored::*;
 /* A square consists of a color and a piece on that square */
@@ -10,6 +10,11 @@ pub struct Square {
 
 /* Squares start with nothing on it and a piece on that square */ 
 impl Square {
+    /* Simple constructor for a new square */
+    pub fn new(square_piece: Option<Piece>, square_color: Color) -> Square {
+        Square {piece: square_piece, color: square_color}
+    }
+
     pub fn is_occupied(&self) -> bool {
         match self.piece {
             Some(_) => true,
@@ -30,7 +35,7 @@ impl Square {
         match self.piece {
             Some(_) => {
                 square_piece_type = self.piece.unwrap().piece_type;
-                piece_color = color_to_string(self.piece.unwrap().color);
+                piece_color = self.piece.unwrap().color.color_to_string();
             },
             None => {
                 square_piece_type = PieceType::None;

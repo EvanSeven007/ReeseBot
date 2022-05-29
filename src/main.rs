@@ -11,8 +11,8 @@ use board_state::BoardState;
 
 
 fn main() {
-    let board_state_fen = "8/8/8/2R1R3/3B4/2R1R3/8/8 w KQkq - 0 1";
-    let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
+    let board_state_fen = "8/8/8/2r5/4K1r1/2r5/8/8 w KQkq - 0 1";
+    let mut board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
     let mut board: BoardState;
 
     match board_state {
@@ -20,14 +20,11 @@ fn main() {
         Err(e) => panic!("Error: {}", e),
     }
 
-    board.print_board();
     println!("STARTING::::::");
-    let moves = board.gen_all_moves(true);
+    let moves = board.gen_all_moves();
     for mv in moves {
         let mut cl = board.clone();
-        cl.make_move(mv);
-        println!("============================");
+        cl.make_move(&mv);
         cl.print_board();
-        println!("============================");
     }
 }

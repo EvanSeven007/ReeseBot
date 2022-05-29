@@ -14,6 +14,9 @@ pub struct BoardState {
     pub can_castle_black_kingside: bool, 
     pub can_castle_black_queenside: bool,
     pub en_passant: Option<Position>,
+    //Todo halfmove
+    //Todo full move
+    
 }
 
 impl BoardState {
@@ -159,8 +162,8 @@ impl BoardState {
     }
 
     /* Updates a board state given a move, which was already been prechecked to be valid */
-    pub fn make_move(&mut self, current_move: Move) {
-        let move_type: MoveType = current_move.move_type;
+    pub fn make_move(&mut self, current_move: &Move) {
+        let move_type: &MoveType = &current_move.move_type;
         match move_type {
             MoveType::standard(val) => {
                 self.squares[val.before.x][val.before.y].piece = None;
@@ -219,24 +222,101 @@ impl BoardState {
 
     /* Checks if the king is in check given a certain position */
     /* Change this to take a square holding the king as input */
-    fn is_in_check(&mut self, king_pos: Position) -> bool {
+    pub fn is_in_check(board: BoardState, king_pos: Position) -> bool {
         /* 
         * Looking for check on the diagonals 
         */
+        
+        //Checking pawn moves
+        let pawn_square_right: Position;
+        let pawn_square_left: Position;
+        match board.active_color {
+            Color::White => {
+                pawn_square_right = Position{x: king_pos.x - 1 , y: king_pos.y - 1};
+                pawn_square_left = Position{x: king_pos.x - 1 , y: king_pos.y + 1};
+            },
+            Color::Black => {
+                pawn_square_right = Position{x: king_pos.x + 1 , y: king_pos.y - 1};
+                pawn_square_left = Position{x: king_pos.x + 1 , y: king_pos.y + 1};
+            },
+        }
+        
+        if board.squares[pawn_square_right.x][pawn_square_right.y].is_occupied() {
+            let p = board.squares[pawn_square_right.x][pawn_square_right.y].piece.unwrap();
+            if p.piece_type == PieceType::Pawn && p.color != board.active_color {
+                return true;
+            }
+        }
+
+        if board.squares[pawn_square_left.x][pawn_square_left.y].is_occupied() {
+            let p = board.squares[pawn_square_left.x][pawn_square_left.y].piece.unwrap();
+            if p.piece_type == PieceType::Pawn && p.color != board.active_color {
+                return true;
+            }
+        }
+
+        let mut candidates = board.generate_rook_moves_helper(&king_pos, board.active_color);
+        for mv in candidates {
+            if board.squares[mv.x][mv.y].is_occupied() {
+                let p = board.squares[mv.x][mv.y].piece.unwrap();
+                if p.color != board.active_color {
+                    match p.piece_type {
+                        PieceType::Rook => return true,
+                        PieceType::Queen => return true,
+                        _ => {},
+                    }
+                }
+            }
+        }
+
+        candidates = board.generate_bishop_moves_helper(&king_pos, board.active_color);
+        for mv in candidates {
+            if board.squares[mv.x][mv.y].is_occupied() {
+                let p = board.squares[mv.x][mv.y].piece.unwrap();
+                if p.color != board.active_color {
+                    match p.piece_type {
+                        PieceType::Bishop => return true,
+                        PieceType::Queen => return true,
+                        _ => {},
+                    }
+                }
+            }
+        }
 
         /* 
         * Looking for check on the ranks
         */
 
-        /* finally, looking for check by a knight */
+        /* Looking for checks by knight */
+        candidates = vec![
+                        Position{x: king_pos.x - 1, y: king_pos.y - 2},
+                        Position{x: king_pos.x - 2, y: king_pos.y - 1},
+                        Position{x: king_pos.x - 1, y: king_pos.y + 2},
+                        Position{x: king_pos.x - 2, y: king_pos.y + 1},
+                        Position{x: king_pos.x + 1, y: king_pos.y + 2},
+                        Position{x: king_pos.x + 2, y: king_pos.y + 1},
+                        Position{x: king_pos.x + 1, y: king_pos.y - 2},
+                        Position{x: king_pos.x + 2, y: king_pos.y - 1},
+                    ];
+        for mv in candidates {
+            if !mv.is_valid_position() {
+                continue;
+            }
+            if board.squares[mv.x][mv.y].is_occupied() {
+                let p = board.squares[mv.x][mv.y].piece.unwrap();
+                if p.piece_type == PieceType::Knight && p.color != board.active_color {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 
-    pub fn gen_all_moves(&mut self, legal: bool) -> Vec<Move> {
+    pub fn gen_all_moves(self) -> Vec<Move> {
         /* Storing the positions of the white and black pieces */
         let mut white_pieces_pos: HashSet<Position> = HashSet::new();
         let mut black_pieces_pos: HashSet<Position> = HashSet::new();
-        let mut king_pos: Position;
+        let mut king_pos: Position = Position{x: 10, y:10};
         for x in 1..9 {
             for y in 1..9 {
                 let curr_piece: Option<Piece> = self.squares[x][y].piece;
@@ -256,6 +336,7 @@ impl BoardState {
                 }
             }
         }
+
         
         /* Current set is the one we are on */
         let curr_set: HashSet<Position>;
@@ -309,7 +390,6 @@ impl BoardState {
                         if self.squares[right.x][right.y].is_occupied() {
                             let captured = self.squares[right.x][right.y].piece.unwrap();
                             if captured.color == curr_piece.color.opposite() {
-                                println!("Capturing Not Promotion");
                                 move_set.push(Move { move_type: MoveType::standard(StandardMove {
                                     before: Position {x: pos.x, y: pos.y},
                                     after: Position{x: right.x, y: right.y},
@@ -321,7 +401,6 @@ impl BoardState {
                         if self.squares[left.x][left.y].is_occupied() {
                             let captured = self.squares[left.x][left.y].piece.unwrap();
                             if captured.color == curr_piece.color.opposite() {
-                                println!("Capturing Not Promotion");
                                 move_set.push(Move { move_type: MoveType::standard(StandardMove {
                                     before: Position {x: pos.x, y: pos.y},
                                     after: Position{x: left.x, y: left.y},
@@ -331,7 +410,6 @@ impl BoardState {
                             }
                         }
                         if first_move && !self.squares[twoup.x][twoup.y].is_occupied() {
-                            println!("Push 2");
                             move_set.push(Move { move_type: MoveType::standard(StandardMove {
                                 before: Position {x: pos.x, y: pos.y},
                                 after: Position{x: twoup.x, y: twoup.y},
@@ -341,7 +419,6 @@ impl BoardState {
                         }
 
                         if !self.squares[oneup.x][oneup.y].is_occupied() {
-                            println!("Push 1");
                             move_set.push(Move { move_type: MoveType::standard(StandardMove {
                                 before: Position {x: pos.x, y: pos.y},
                                 after: Position{x: oneup.x, y: oneup.y},
@@ -354,7 +431,6 @@ impl BoardState {
                         if self.squares[right.x][right.y].is_occupied() {
                             let captured = self.squares[right.x][right.y].piece.unwrap();
                             if captured.color == curr_piece.color.opposite() {
-                                println!("Capturing Promoion");
                                 move_set.push(Move { move_type: MoveType::promotion(PromotionMove {
                                     before: Position {x: pos.x, y: pos.y},
                                     after: Position{x: right.x, y: right.y},
@@ -366,7 +442,6 @@ impl BoardState {
                         if self.squares[left.x][left.y].is_occupied() {
                             let captured = self.squares[left.x][left.y].piece.unwrap();
                             if captured.color == curr_piece.color.opposite() {
-                                println!("Capturing Promotion");
                                 move_set.push(Move { move_type: MoveType::promotion(PromotionMove {
                                     before: Position {x: pos.x, y: pos.y},
                                     after: Position{x: left.x, y: left.y},
@@ -547,13 +622,23 @@ impl BoardState {
             }
         }
 
-        //Legal move set 
-        if legal {
-            //For move, if in_check is false then add it to legal move set
-        } else {
-            //Legal moveset is move_set
+        let mut legal_moves: Vec<Move> = Vec::new();
+        for mv in move_set {
+            let mut board_copy: BoardState = self;
+            board_copy.make_move(&mv);
+            if BoardState::is_in_check(board_copy, king_pos) {
+                legal_moves.push(mv);
+            }
         }
-        return move_set;
+        if legal_moves.len() == 0 {
+            self.print_board();
+            if BoardState::is_in_check(self, king_pos) {
+                println!("GAME OVER BY CHECKMATE: {} has defeated {}", self.active_color.opposite().color_to_string(), self.active_color.color_to_string());
+            } else {
+                println!("Game over by Stalemate!");
+            }
+        }
+        return legal_moves;
     }
 
     /* Given a position on the board and a color, this fucntion generates a set of squares
