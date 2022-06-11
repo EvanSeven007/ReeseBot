@@ -242,11 +242,12 @@ impl BoardState {
     /* Checks if the king is in check given a certain position 
         Returns True if the king of active color is in check, false otherwise
     */
-    pub fn is_in_check(board: BoardState) -> bool {
+    pub fn is_in_check(self: BoardState) -> bool {
         /* 
         * Looking for check on the diagonals 
         */
         //Checking pawn moves
+        let board = self;
         let mut king_pos_opt: Option<Position> = None;
         let king_pos: Position;
         for i in 1..9 {
@@ -254,7 +255,6 @@ impl BoardState {
                 if board.squares[i][j].is_occupied() {
                     let p = board.squares[i][j].piece.unwrap();
                     if p.piece_type == PieceType::King && p.color == board.active_color {
-                        println!("Found king at {},{}", i, j);
                         king_pos_opt= Some(Position{x: i, y: j});
                         break;
                     }
@@ -738,13 +738,13 @@ impl BoardState {
             board_copy.make_move(&mv);
             board_copy.active_color = board_copy.active_color.opposite();
             //Why does this work?
-            if !BoardState::is_in_check(board_copy) {
+            if !board_copy.is_in_check() {
                 legal_moves.push(mv);
             }
         }
 
         if legal_moves.len() == 0 {
-            if BoardState::is_in_check(self) {
+            if self.is_in_check(){
                 println!("GAME OVER BY CHECKMATE: {} has defeated {}", self.active_color.opposite().color_to_string(), self.active_color.color_to_string());
             } else {
                 println!("Game over by Stalemate!");

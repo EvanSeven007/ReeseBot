@@ -11,7 +11,7 @@ use board_state::BoardState;
 
 
 fn main() {
-    let board_state_fen = "8/8/8/8/1Pp5/8/5k2/7K b - b4 0 1";
+    let board_state_fen = "r4nk1/4Rp1p/1p4p1/pP1N4/3P2P1/3r4/5P1P/R5K1 b - - 3 25";
     let mut board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
     let mut board: BoardState;
 
@@ -24,14 +24,6 @@ fn main() {
     let moves = board.gen_all_moves();
     for mv in moves {
         let mut cl = board.clone();
-        match board.en_passant {
-            Some(val) => {
-                println!("En passant at: {}, {}", val.x, val.y);
-            }
-            None => {
-                println!("No enpassant");
-            }
-        }
         cl.make_move(&mv);
         cl.print_board();
     }
