@@ -3,6 +3,7 @@ use crate::piece::*;
 use crate::color::*;
 use crate::chess_move::*;
 use std::collections::HashSet;
+use std::process::exit;
 
 /* A board is a 8x8 array of squares */
 #[derive(Clone, Copy)]
@@ -14,14 +15,9 @@ pub struct BoardState {
     pub can_castle_black_kingside: bool, 
     pub can_castle_black_queenside: bool,
     pub en_passant: Option<Position>,
-    //Todo halfmove
-    //Todo full move
-    
 }
 
 impl BoardState {
-    /* Creating an empty board */
-
     /* Creates a board state from a FEN string */
     pub fn new(fen: &str) -> Result<BoardState, &str> {
         //Creating an 8x8 array of uninitialized arrays
@@ -85,6 +81,7 @@ impl BoardState {
                 _ => panic!("fen string castling info is malformed!"),
             }
         }
+
         //Variables for enpassant goodness
         let en_passant: Option<Position>;
         let x: usize;
@@ -94,25 +91,26 @@ impl BoardState {
         } else if fen_strings[3].len() == 2 { 
             let en_passant_string: Vec<char> = fen_strings[3].chars().collect();
             match en_passant_string[0] {
-                'a' => x = 0,
-                'b' => x = 1,
-                'c' => x = 2,
-                'd' => x = 3,
-                'e' => x = 4,
-                'f' => x = 5,
-                'g' => x = 6,
-                'h' => x = 7,
+                'a' => x = 1,
+                'b' => x = 2,
+                'c' => x = 3,
+                'd' => x = 4,
+                'e' => x = 5,
+                'f' => x = 6,
+                'g' => x = 7,
+                'h' => x = 8,
                 _ => panic!("fen string enpassant malformed!"),
             };
             /* This is just atrocious Evan, fix this with an unwrap or else*/
             if !en_passant_string[1].is_digit(10) {
                 return Err("fen string enpassant malformed!")
             }
-            y = (en_passant_string[1].to_digit(10).unwrap() - 1) as usize; /* Potential off by one bug */
-            if y > 7 {
+            //Accounting for how we represent the board state in our own coordinates
+            y = (9 - en_passant_string[1].to_digit(10).unwrap()) as usize; /* Another result of stupidly not considering the coordinate system */
+            if y > 8 || y < 1 {
                 return Err("fen string enpassant malformed!")
             }
-            en_passant = Some(Position{ x , y });
+            en_passant = Some(Position{ x , y }.swap()); //Accounting for how we index array
         } else {
             return Err("fen string enpassant malformed!")
         }
@@ -164,11 +162,32 @@ impl BoardState {
     /* Updates a board state given a move, which was already been prechecked to be valid */
     pub fn make_move(&mut self, current_move: &Move) {
         let move_type: &MoveType = &current_move.move_type;
+        self.en_passant = None; //Reseting en_passant square to None after every move, this will be updated later depending on move
         match move_type {
             MoveType::standard(val) => {
                 self.squares[val.before.x][val.before.y].piece = None;
                 self.squares[val.after.x][val.after.y].piece = Some(val.piece_moved);
-
+                //Checking if move was a pawn move up to update enpassant position
+                if val.en_passant { //Was this a capture en_passant, or was it a pawn moving forward two squares? 
+                    match current_move.piece_captured {
+                        Some(_) => {
+                            //Get position of captured Pawn
+                            let mut captured_pos: Position = Position{x: val.after.x, y: val.after.y};
+                            match self.active_color {
+                                Color::White => {
+                                    captured_pos.x = val.after.x + 1;
+                                }, 
+                                Color::Black => {
+                                    captured_pos.x = val.after.x - 1;
+                                }
+                            }
+                            self.squares[captured_pos.x][captured_pos.y].piece = None;
+                        },
+                        None => {
+                            self.en_passant = Some(val.after); //Modifying board state so gen_all_moves knows to consider this square when considering en_passant
+                        }
+                    }
+                } 
             },
 
             MoveType::castle(val) => {
@@ -220,14 +239,39 @@ impl BoardState {
         };
     }
 
-    /* Checks if the king is in check given a certain position */
-    /* Change this to take a square holding the king as input */
-    pub fn is_in_check(board: BoardState, king_pos: Position) -> bool {
+    /* Checks if the king is in check given a certain position 
+        Returns True if the king of active color is in check, false otherwise
+    */
+    pub fn is_in_check(board: BoardState) -> bool {
         /* 
         * Looking for check on the diagonals 
         */
-        
         //Checking pawn moves
+        let mut king_pos_opt: Option<Position> = None;
+        let king_pos: Position;
+        for i in 1..9 {
+            for j in 1..9 {
+                if board.squares[i][j].is_occupied() {
+                    let p = board.squares[i][j].piece.unwrap();
+                    if p.piece_type == PieceType::King && p.color == board.active_color {
+                        println!("Found king at {},{}", i, j);
+                        king_pos_opt= Some(Position{x: i, y: j});
+                        break;
+                    }
+                }
+            }
+        }
+
+        match king_pos_opt {
+            None => {
+                println!("No king!");
+                exit(-1);
+            },
+            Some(val) => {
+                king_pos = val;
+            }
+        }
+        //Finding the king
         let pawn_square_right: Position;
         let pawn_square_left: Position;
         match board.active_color {
@@ -241,63 +285,71 @@ impl BoardState {
             },
         }
         
-        if board.squares[pawn_square_right.x][pawn_square_right.y].is_occupied() {
-            let p = board.squares[pawn_square_right.x][pawn_square_right.y].piece.unwrap();
-            if p.piece_type == PieceType::Pawn && p.color != board.active_color {
-                return true;
+        /* Checking for checks by pawns */
+        if pawn_square_right.is_valid_position() {
+            if board.squares[pawn_square_right.x][pawn_square_right.y].is_occupied() {
+                let p = board.squares[pawn_square_right.x][pawn_square_right.y].piece.unwrap();
+                if p.piece_type == PieceType::Pawn && p.color != board.active_color {
+                    println!("In check by pawn");
+                    return true;
+                }
             }
         }
 
-        if board.squares[pawn_square_left.x][pawn_square_left.y].is_occupied() {
-            let p = board.squares[pawn_square_left.x][pawn_square_left.y].piece.unwrap();
-            if p.piece_type == PieceType::Pawn && p.color != board.active_color {
-                return true;
+        if pawn_square_left.is_valid_position() {
+            if board.squares[pawn_square_left.x][pawn_square_left.y].is_occupied() {
+                let p = board.squares[pawn_square_left.x][pawn_square_left.y].piece.unwrap();
+                if p.piece_type == PieceType::Pawn && p.color != board.active_color {
+                    println!("in check by pawn");
+                    return true;
+                }
             }
         }
 
+        /* Checking rank checks */
         let mut candidates = board.generate_rook_moves_helper(&king_pos, board.active_color);
         for mv in candidates {
             if board.squares[mv.x][mv.y].is_occupied() {
                 let p = board.squares[mv.x][mv.y].piece.unwrap();
                 if p.color != board.active_color {
                     match p.piece_type {
-                        PieceType::Rook => return true,
-                        PieceType::Queen => return true,
+                        PieceType::Rook => {
+                            println!("In check by rook");
+                            return true
+                        },
+                        PieceType::Queen => {
+                            println!("In check by queen");
+                            return true
+                        },
                         _ => {},
                     }
                 }
             }
         }
 
+        /* Checking check by diagonols */
         candidates = board.generate_bishop_moves_helper(&king_pos, board.active_color);
         for mv in candidates {
             if board.squares[mv.x][mv.y].is_occupied() {
                 let p = board.squares[mv.x][mv.y].piece.unwrap();
                 if p.color != board.active_color {
                     match p.piece_type {
-                        PieceType::Bishop => return true,
-                        PieceType::Queen => return true,
+                        PieceType::Bishop => {
+                            println!("In check by bishop");
+                            return true
+                        },
+                        PieceType::Queen => {
+                            println!("In check by queen");
+                            return true
+                        },
                         _ => {},
                     }
                 }
             }
         }
 
-        /* 
-        * Looking for check on the ranks
-        */
-
         /* Looking for checks by knight */
-        candidates = vec![
-                        Position{x: king_pos.x - 1, y: king_pos.y - 2},
-                        Position{x: king_pos.x - 2, y: king_pos.y - 1},
-                        Position{x: king_pos.x - 1, y: king_pos.y + 2},
-                        Position{x: king_pos.x - 2, y: king_pos.y + 1},
-                        Position{x: king_pos.x + 1, y: king_pos.y + 2},
-                        Position{x: king_pos.x + 2, y: king_pos.y + 1},
-                        Position{x: king_pos.x + 1, y: king_pos.y - 2},
-                        Position{x: king_pos.x + 2, y: king_pos.y - 1},
-                    ];
+        candidates =  board.generate_knight_moves_helper(&king_pos);
         for mv in candidates {
             if !mv.is_valid_position() {
                 continue;
@@ -305,10 +357,39 @@ impl BoardState {
             if board.squares[mv.x][mv.y].is_occupied() {
                 let p = board.squares[mv.x][mv.y].piece.unwrap();
                 if p.piece_type == PieceType::Knight && p.color != board.active_color {
+                    println!("In check by knight");
                     return true;
                 }
             }
         }
+
+        /* Looking for checks by king */
+
+        candidates = vec![
+            Position{x: king_pos.x - 1, y: king_pos.y - 1},
+            Position{x: king_pos.x - 1, y: king_pos.y},
+            Position{x: king_pos.x - 1, y: king_pos.y + 1},
+            Position{x: king_pos.x, y: king_pos.y - 1},
+            Position{x: king_pos.x, y: king_pos.y + 1},
+            Position{x: king_pos.x + 1, y: king_pos.y - 1},
+            Position{x: king_pos.x + 1, y: king_pos.y},
+            Position{x: king_pos.x + 1, y: king_pos.y + 1}
+        ];
+
+        for mv in candidates {
+            if !mv.is_valid_position() {
+                continue;
+            }
+            if board.squares[mv.x][mv.y].is_occupied() {
+                let p = board.squares[mv.x][mv.y].piece.unwrap();
+                if p.piece_type == PieceType::King && p.color != board.active_color {
+                    println!("In check by King");
+                    return true;
+                }
+            }
+        }
+
+
         return false;
     }
 
@@ -316,7 +397,7 @@ impl BoardState {
         /* Storing the positions of the white and black pieces */
         let mut white_pieces_pos: HashSet<Position> = HashSet::new();
         let mut black_pieces_pos: HashSet<Position> = HashSet::new();
-        let mut king_pos: Position = Position{x: 10, y:10};
+        let mut king_pos: Position = Position{x: 0, y: 0};
         for x in 1..9 {
             for y in 1..9 {
                 let curr_piece: Option<Piece> = self.squares[x][y].piece;
@@ -337,6 +418,10 @@ impl BoardState {
             }
         }
 
+        if king_pos.x == 0 {
+            println!("No King!");
+            exit(-1);
+        }
         
         /* Current set is the one we are on */
         let curr_set: HashSet<Position>;
@@ -359,7 +444,8 @@ impl BoardState {
                     let left: Position;
                     let oneup: Position;
                     let twoup: Position;
-                    
+                    let en_passant_left: Position;
+                    let en_passant_right: Position; 
                     /* Are we on the first pawn move? are we on a promotion? */
                     let first_move: bool;
                     let is_promotion: bool; 
@@ -371,6 +457,8 @@ impl BoardState {
                             left = Position {x: pos.x - 1, y: pos.y - 1};
                             oneup = Position {x: pos.x - 1, y: pos.y};
                             twoup =  Position {x: pos.x - 2, y: pos.y};
+                            en_passant_left = Position {x: pos.x - 1, y: pos.y + 1};
+                            en_passant_right= Position {x: pos.x - 1, y: pos.y - 1};
                             //Figure these out
                             first_move = pos.x == 7;
                             is_promotion = pos.x == 2;
@@ -380,6 +468,8 @@ impl BoardState {
                             left = Position {x: pos.x - 1, y: pos.y - 1};
                             oneup = Position {x: pos.x + 1, y: pos.y};
                             twoup =  Position {x: pos.x + 2, y: pos.y};
+                            en_passant_left = Position {x: pos.x + 1, y: pos.y + 1};
+                            en_passant_right= Position {x: pos.x + 1, y: pos.y - 1};
                             //Figure these out
                             first_move = pos.x == 2;
                             is_promotion = pos.x - 1 == 7;
@@ -387,6 +477,8 @@ impl BoardState {
                     }
                     if !is_promotion {
                         /* Capturing a piece but not a promotion */
+
+                        //Capturing piece to the right
                         if self.squares[right.x][right.y].is_occupied() {
                             let captured = self.squares[right.x][right.y].piece.unwrap();
                             if captured.color == curr_piece.color.opposite() {
@@ -394,10 +486,11 @@ impl BoardState {
                                     before: Position {x: pos.x, y: pos.y},
                                     after: Position{x: right.x, y: right.y},
                                     piece_moved: curr_piece, 
-                                    is_enpassant: false,
+                                    en_passant: false,
                                 }), piece_captured: Some(captured)});
                             }
                         }
+                        //Capturing piece to the left
                         if self.squares[left.x][left.y].is_occupied() {
                             let captured = self.squares[left.x][left.y].piece.unwrap();
                             if captured.color == curr_piece.color.opposite() {
@@ -405,26 +498,53 @@ impl BoardState {
                                     before: Position {x: pos.x, y: pos.y},
                                     after: Position{x: left.x, y: left.y},
                                     piece_moved: curr_piece, 
-                                    is_enpassant: false,
+                                    en_passant: false,
                                 }), piece_captured: Some(captured)});
                             }
                         }
+                        //Moving up two
                         if first_move && !self.squares[twoup.x][twoup.y].is_occupied() {
                             move_set.push(Move { move_type: MoveType::standard(StandardMove {
                                 before: Position {x: pos.x, y: pos.y},
                                 after: Position{x: twoup.x, y: twoup.y},
                                 piece_moved: curr_piece, 
-                                is_enpassant: false,
+                                en_passant: true,
                             }), piece_captured: None});
                         }
 
+                        //Moving up one
                         if !self.squares[oneup.x][oneup.y].is_occupied() {
                             move_set.push(Move { move_type: MoveType::standard(StandardMove {
                                 before: Position {x: pos.x, y: pos.y},
                                 after: Position{x: oneup.x, y: oneup.y},
                                 piece_moved: curr_piece, 
-                                is_enpassant: false,
+                                en_passant: false,
                             }), piece_captured: None});
+                        }
+                        //Checking enpassant
+                        match self.en_passant {
+                            Some(val) => {
+                                println!("en_passant at {}, {}/ {}, {}", val.x, val.y, pos.x, pos.y);
+                                
+                                let side_right = Position{x: pos.x, y: pos.y - 1};
+                                let side_left = Position{x: pos.x, y: pos.y + 1};
+                                if side_right == val {
+                                    move_set.push(Move { move_type: MoveType::standard(StandardMove {
+                                        before: Position {x: pos.x, y: pos.y},
+                                        after: en_passant_right,
+                                        piece_moved: curr_piece, 
+                                        en_passant: true,
+                                    }), piece_captured: Some(Piece {piece_type: PieceType::Pawn, color: self.active_color.opposite()})});
+                                } else if side_left == val {
+                                    move_set.push(Move { move_type: MoveType::standard(StandardMove {
+                                        before: Position {x: pos.x, y: pos.y},
+                                        after: en_passant_left,
+                                        piece_moved: curr_piece, 
+                                        en_passant: true,
+                                    }), piece_captured: Some(Piece {piece_type: PieceType::Pawn, color: self.active_color.opposite()})});
+                                }
+                            },
+                            None => {},
                         }
                     } else {
                          /* Capturing a piece and it is a promotion */
@@ -459,7 +579,6 @@ impl BoardState {
                         }
                     }
 
-                    //Check if enpassant /* TODO LATER */
                 },
                 PieceType::King => {
                     let possible_king_positions: Vec<Position> = vec![
@@ -486,7 +605,7 @@ impl BoardState {
                                     before: Position {x: pos.x, y: pos.y},
                                     after: Position{x: cand.x, y: cand.y},
                                     piece_moved: curr_piece, 
-                                    is_enpassant: false,
+                                    en_passant: false,
                                 }), piece_captured: Some(captured)});
                             }
                         } else {
@@ -494,23 +613,13 @@ impl BoardState {
                                 before: Position {x: pos.x, y: pos.y},
                                 after: Position{x: cand.x, y: cand.y},
                                 piece_moved: curr_piece, 
-                                is_enpassant: false,
+                                en_passant: false,
                             }), piece_captured: None});
                         }
                     }
                 },
                 PieceType::Knight => {
-                    let possible_knight_positions: Vec<Position> = vec![
-                        Position{x: pos.x - 1, y: pos.y - 2},
-                        Position{x: pos.x - 2, y: pos.y - 1},
-                        Position{x: pos.x - 1, y: pos.y + 2},
-                        Position{x: pos.x - 2, y: pos.y + 1},
-                        Position{x: pos.x + 1, y: pos.y + 2},
-                        Position{x: pos.x + 2, y: pos.y + 1},
-                        Position{x: pos.x + 1, y: pos.y - 2},
-                        Position{x: pos.x + 2, y: pos.y - 1},
-                    ];
-
+                    let possible_knight_positions: Vec<Position> = self.generate_knight_moves_helper(pos);
                     for cand in possible_knight_positions {
                         if !cand.is_valid_position() {
                             continue;
@@ -523,7 +632,7 @@ impl BoardState {
                                     before: Position {x: pos.x, y: pos.y},
                                     after: Position{x: cand.x, y: cand.y},
                                     piece_moved: curr_piece, 
-                                    is_enpassant: false,
+                                    en_passant: false,
                                 }), piece_captured: Some(captured)});
                             }
                         } else {
@@ -531,7 +640,7 @@ impl BoardState {
                                 before: Position {x: pos.x, y: pos.y},
                                 after: Position{x: cand.x, y: cand.y},
                                 piece_moved: curr_piece, 
-                                is_enpassant: false,
+                                en_passant: false,
                             }), piece_captured: None});
                         }
                     }
@@ -551,7 +660,7 @@ impl BoardState {
                                         before: Position {x: pos.x, y: pos.y},
                                         after: Position{x: position.x, y: position.y},
                                         piece_moved: curr_piece, 
-                                        is_enpassant: false,
+                                        en_passant: false,
                                     }), piece_captured: Some(captured)});
                                 }
                             } else {
@@ -559,7 +668,7 @@ impl BoardState {
                                     before: Position {x: pos.x, y: pos.y},
                                     after: Position{x: position.x, y: position.y},
                                     piece_moved: curr_piece, 
-                                    is_enpassant: false,
+                                    en_passant: false,
                                 }), piece_captured: None});
                         }
                     }
@@ -577,7 +686,7 @@ impl BoardState {
                                         before: Position {x: pos.x, y: pos.y},
                                         after: Position{x: position.x, y: position.y},
                                         piece_moved: curr_piece, 
-                                        is_enpassant: false,
+                                        en_passant: true,
                                     }), piece_captured: Some(captured)});
                                 }
                             } else {
@@ -585,7 +694,7 @@ impl BoardState {
                                     before: Position {x: pos.x, y: pos.y},
                                     after: Position{x: position.x, y: position.y},
                                     piece_moved: curr_piece, 
-                                    is_enpassant: false,
+                                    en_passant: true,
                                 }), piece_captured: None});
                         }
                     }
@@ -605,7 +714,7 @@ impl BoardState {
                                         before: Position {x: pos.x, y: pos.y},
                                         after: Position{x: position.x, y: position.y},
                                         piece_moved: curr_piece, 
-                                        is_enpassant: false,
+                                        en_passant: false,
                                     }), piece_captured: Some(captured)});
                                 }
                             } else {
@@ -613,7 +722,7 @@ impl BoardState {
                                     before: Position {x: pos.x, y: pos.y},
                                     after: Position{x: position.x, y: position.y},
                                     piece_moved: curr_piece, 
-                                    is_enpassant: false,
+                                    en_passant: false,
                                 }), piece_captured: None});
                         }
                     }
@@ -621,27 +730,55 @@ impl BoardState {
                 PieceType::None => {},
             }
         }
-
+        
+        //Find the king in every call to 
         let mut legal_moves: Vec<Move> = Vec::new();
         for mv in move_set {
             let mut board_copy: BoardState = self;
             board_copy.make_move(&mv);
-            if BoardState::is_in_check(board_copy, king_pos) {
+            board_copy.active_color = board_copy.active_color.opposite();
+            //Why does this work?
+            if !BoardState::is_in_check(board_copy) {
                 legal_moves.push(mv);
             }
         }
+
         if legal_moves.len() == 0 {
-            self.print_board();
-            if BoardState::is_in_check(self, king_pos) {
+            if BoardState::is_in_check(self) {
                 println!("GAME OVER BY CHECKMATE: {} has defeated {}", self.active_color.opposite().color_to_string(), self.active_color.color_to_string());
             } else {
                 println!("Game over by Stalemate!");
             }
+            exit(1);
         }
         return legal_moves;
     }
 
-    /* Given a position on the board and a color, this fucntion generates a set of squares
+    /* Given a position, this function generates a set of positions for that knight */
+
+    fn generate_knight_moves_helper(&self, pos: &Position) -> Vec<Position> {
+        let mut possible_knight_positions: Vec<Position> = Vec::new();
+        for u in 0..3 {
+            for v in 0..3 {
+                if u != v && u != 0 && v != 0 {
+                    possible_knight_positions.push(Position{x: pos.x + u, y: pos.y + v});
+                    if pos.x >= u && pos.y >= v {
+                        possible_knight_positions.push(Position{x: pos.x - u, y:  pos.y - v});
+                        possible_knight_positions.push(Position{x: pos.x - u, y: pos.y + v});
+                        possible_knight_positions.push(Position{x: pos.x + u, y: pos.y - v});
+                    } else if pos.x >= u && pos.y < v {
+                        possible_knight_positions.push(Position{x: pos.x - u, y: pos.y + v});
+                    } else if pos.x < u && pos.y >= v {
+                        possible_knight_positions.push(Position{x: pos.x + u,y:  pos.y - v});
+                    }
+                }
+            }
+        }
+
+        return possible_knight_positions;
+    }
+
+    /* Given a position on the board and a color, this function generates a set of squares
     a rook of that color placed on that position could move to */
     fn generate_rook_moves_helper(&self, pos: &Position, color: Color) -> Vec<Position> {
         let mut rook_positions: Vec<Position> = Vec::new();

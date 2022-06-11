@@ -1,4 +1,5 @@
 use crate::piece::{Piece};
+use crate::board_state::{BoardState};
 /* Position in on a board */ 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub struct Position {
@@ -28,7 +29,7 @@ pub struct StandardMove { //enpassant is in this?
     pub before: Position, 
     pub after: Position, 
     pub piece_moved: Piece, 
-    pub is_enpassant: bool,
+    pub en_passant: bool,
 }
 
 /* Castles are either king or queenside */
@@ -43,8 +44,30 @@ pub struct PromotionMove {
     pub promote_to: Piece,
 }
 
-/* A move */ 
+/* A general move */ 
 pub struct Move {
     pub move_type: MoveType,
     pub piece_captured: Option<Piece>, 
 }
+
+/*
+impl Move {
+    /* takes in a string and gives a corresponding move for it, and then checks if that move is valid */
+    /* If the move is valid, it makes the move on the board, otherwise it prompts for a new move */
+    pub fn parse_move(board: &mut BoardState, input: &str) {
+        let mut parsed_move: Move;
+        match input {
+            "O-O" => parsed_move = Move {
+                move_type: MoveType::castle{
+                    is_kingside: true
+                }, 
+                piece_captured: None
+            },
+
+            _ => {
+                println!("Malformed Move: Please Enter Another");
+            }
+        }
+    }
+}
+*/
