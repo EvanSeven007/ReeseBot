@@ -5,9 +5,6 @@ mod chess_move;
 mod board_state;
 mod move_gen;
 use piece::{PieceType, Piece};
-use color::Color;
-use square::Square;
-use chess_move::*;
 use board_state::BoardState;
 
 

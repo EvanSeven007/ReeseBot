@@ -93,6 +93,7 @@ pub fn promotion(before: Position, after: Position, promote_to: Piece, piece_cap
 }
 
 //Could be done better
+//Enpassant is position of captured pawn
 pub fn enPassant(before: Position, after: Position, en_passant: Position, piece_captured: Option<Piece>) -> Move{
     let move_type: MoveType = MoveType::enPassant(EnPassantMove{before, after, en_passant});
 

@@ -3,8 +3,7 @@ use crate::piece::*;
 use crate::color::*;
 use crate::chess_move::*;
 use crate::move_gen::*;
-use std::collections::HashSet;
-use std::process::exit;
+use num::{abs};
 
 #[derive(Clone, Copy)]
 pub struct CastleRights {
@@ -34,7 +33,7 @@ impl BoardState {
             }
         }
 
-        let mut fen = fen.to_string();
+        let fen = fen.to_string();
 
         let fen_strings: Vec<&str> = fen.split(' ').collect();
         if fen_strings.len() != 6 {
@@ -90,7 +89,7 @@ impl BoardState {
         //Variables for enpassant goodness
         let en_passant: Option<Position>;
         let x: usize;
-        let mut y: usize;
+        let y: usize;
         if fen_strings[3].len() == 1 && fen_strings[3] == "-" {
             en_passant = None;
         } else if fen_strings[3].len() == 2 { 
@@ -172,6 +171,10 @@ impl BoardState {
             MoveType::standard(val) => {
                 self.squares[val.before.x][val.before.y].piece = None;
                 self.squares[val.after.x][val.after.y].piece = Some(val.piece_moved);
+                //Setting enpassant 
+                if val.piece_moved.piece_type == PieceType::Pawn && abs(val.after.x as i8 - val.before.x as i8) == 2 {
+                    self.en_passant = Some(val.after);
+                }
             },
 
             MoveType::castle(val) => {
@@ -332,7 +335,7 @@ impl BoardState {
         }
 
         /* Looking for checks by knight */
-        candidates =  generate_knight_moves_helper(&board, &king_pos);
+        candidates =  generate_knight_moves_helper(&king_pos);
         for mv in candidates {
             if !mv.is_valid_position() {
                 continue;
