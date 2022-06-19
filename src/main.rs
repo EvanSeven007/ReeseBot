@@ -20,7 +20,7 @@ fn main() {
         Err(e) => panic!("Error: {}", e),
     }
     
-    //nonce
+    
     println!("STARTING::::::");
     let moves = board.gen_all_moves();
     for mv in moves {
