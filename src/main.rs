@@ -3,6 +3,7 @@ mod color;
 mod square;
 mod chess_move;
 mod board_state;
+mod move_gen;
 use piece::{PieceType, Piece};
 use color::Color;
 use square::Square;
@@ -22,7 +23,7 @@ fn main() {
     
     
     println!("STARTING::::::");
-    let moves = board.gen_all_moves();
+    let moves = move_gen::gen_all_moves(&board);
     for mv in moves {
         let mut cl = board.clone();
         cl.make_move(&mv);

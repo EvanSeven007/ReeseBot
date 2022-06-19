@@ -1,4 +1,5 @@
 use crate::color;
+
 /* Enumeration for a piece type */ 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum PieceType {

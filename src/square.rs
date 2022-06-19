@@ -1,6 +1,7 @@
 use crate::color::{Color};
 use crate::piece::{Piece, PieceType};
 use colored::*;
+
 /* A square consists of a color and a piece on that square */
 #[derive(Clone, Copy)]
 pub struct Square {
