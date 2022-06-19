@@ -43,6 +43,7 @@ impl Square {
             },
         };
 
+        //Display 
         let (left_bracket, right_bracket) = ("[".color(square_color.clone()), "]".color(square_color)); //This is unelegant, but it works
         match square_piece_type {
             PieceType::King   => format!("{}{}{}", left_bracket, "♚".color(piece_color), right_bracket),

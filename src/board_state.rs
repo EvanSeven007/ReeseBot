@@ -5,19 +5,23 @@ use crate::chess_move::*;
 use std::collections::HashSet;
 use std::process::exit;
 
+#[derive(Clone, Copy)]
+pub struct CastleRights {
+    pub can_castle_white_kingside: bool,
+    pub can_castle_white_queenside: bool,
+    pub can_castle_black_kingside: bool, 
+    pub can_castle_black_queenside: bool,
+}
 /* A board is a 8x8 array of squares */
 #[derive(Clone, Copy)]
 pub struct BoardState {
     pub squares: [[Square; 10]; 10],
     pub active_color: Color, 
-    pub can_castle_white_kingside: bool,
-    pub can_castle_white_queenside: bool,
-    pub can_castle_black_kingside: bool, 
-    pub can_castle_black_queenside: bool,
+    pub castle_rights: CastleRights,
     pub en_passant: Option<Position>,
 }
 
-impl BoardState {
+impl BoardState { 
     /* Creates a board state from a FEN string */
     pub fn new(fen: &str) -> Result<BoardState, &str> {
         //Creating an 8x8 array of uninitialized arrays
@@ -31,14 +35,6 @@ impl BoardState {
 
         let mut fen = fen.to_string();
 
-        //Stupid way to get rid of new line characters
-        if fen.ends_with('\n') {
-            fen.pop();
-            if fen.ends_with('\r') {
-                fen.pop();
-            }
-        }
-
         let fen_strings: Vec<&str> = fen.split(' ').collect();
         if fen_strings.len() != 6 {
             return Err("Invalid fen string!");
@@ -47,6 +43,7 @@ impl BoardState {
         let position_str: Vec<&str> = fen_strings[0].split('/').collect();
         let mut col: usize;
         let mut row_string: &str; //String that stores the current row info
+        
         for row in 0..8 {
             row_string = position_str[row];
             col = 1;
@@ -82,13 +79,21 @@ impl BoardState {
             }
         }
 
+        let castle_rights: CastleRights = CastleRights {
+            can_castle_white_kingside,
+            can_castle_white_queenside,
+            can_castle_black_kingside,
+            can_castle_black_queenside
+        };
+
         //Variables for enpassant goodness
         let en_passant: Option<Position>;
         let x: usize;
-        let y: usize;
+        let mut y: usize;
         if fen_strings[3].len() == 1 && fen_strings[3] == "-" {
             en_passant = None;
         } else if fen_strings[3].len() == 2 { 
+            /* Parse enpassant string */
             let en_passant_string: Vec<char> = fen_strings[3].chars().collect();
             match en_passant_string[0] {
                 'a' => x = 1,
@@ -101,21 +106,25 @@ impl BoardState {
                 'h' => x = 8,
                 _ => panic!("fen string enpassant malformed!"),
             };
+            y = (9 - en_passant_string[1].to_digit(10).unwrap_or_else(|| panic!("fen string enpassant malformed!"))) as usize;
             /* This is just atrocious Evan, fix this with an unwrap or else*/
+            /*
             if !en_passant_string[1].is_digit(10) {
                 return Err("fen string enpassant malformed!")
             }
             //Accounting for how we represent the board state in our own coordinates
-            y = (9 - en_passant_string[1].to_digit(10).unwrap()) as usize; /* Another result of stupidly not considering the coordinate system */
-            if y > 8 || y < 1 {
+            y = (9 - en_passant_string[1].to_digit(10).unwrap()) as usize; 
+            */
+            if y < 1 || y > 8 {
                 return Err("fen string enpassant malformed!")
             }
             en_passant = Some(Position{ x , y }.swap()); //Accounting for how we index array
+        
         } else {
             return Err("fen string enpassant malformed!")
         }
 
-        Ok(BoardState { squares, active_color, can_castle_white_kingside, can_castle_white_queenside, can_castle_black_kingside, can_castle_black_queenside, en_passant })
+        Ok(BoardState { squares, active_color, castle_rights, en_passant})
     }
 
 
@@ -140,22 +149,17 @@ impl BoardState {
 
     /* Gets the color of a board from its coordinates */
     fn get_color(val1: &usize, val2: &usize) -> Color {
-        match val1 {
-             2 | 4 | 6 | 8 => {
-                match val2 {
-                    1 | 3 | 5 | 7 => Color::Black,
-                    2 | 4 | 6 | 8 => Color::White,
-                    _ => panic!("not a valid coordinate! {} {}", val1, val2),
-                }
-            }
-            1 | 3 | 5 | 7 => {
-                match val2 {
-                    1 | 3 | 5 | 7 => Color::White,
-                    2 | 4 | 6 | 8 => Color::Black,
-                    _ => panic!("not a valid coordinate! {} {}", val1, val2),
-                }
-            }
-            _ => panic!("Not a valid coordinate {}{}", val1, val2)
+        if val1 < &0 || val1 > &8 || val2 < &0 || val2 > &8 {
+            panic!("Not a valid coordinate {} {}", val1, val2);
+        }
+
+        let val1_is_odd: bool = val1 % 2 == 0;
+        let val2_is_odd: bool = val2 % 2 == 0;
+
+        if (val1_is_odd && val2_is_odd) || (!val1_is_odd && !val2_is_odd) {
+            return Color::White;
+        } else {
+            return Color::Black;
         }
     }
 
@@ -167,68 +171,31 @@ impl BoardState {
             MoveType::standard(val) => {
                 self.squares[val.before.x][val.before.y].piece = None;
                 self.squares[val.after.x][val.after.y].piece = Some(val.piece_moved);
-                //Checking if move was a pawn move up to update enpassant position
-                if val.en_passant { //Was this a capture en_passant, or was it a pawn moving forward two squares? 
-                    match current_move.piece_captured {
-                        Some(_) => {
-                            //Get position of captured Pawn
-                            let mut captured_pos: Position = Position{x: val.after.x, y: val.after.y};
-                            match self.active_color {
-                                Color::White => {
-                                    captured_pos.x = val.after.x + 1;
-                                }, 
-                                Color::Black => {
-                                    captured_pos.x = val.after.x - 1;
-                                }
-                            }
-                            self.squares[captured_pos.x][captured_pos.y].piece = None;
-                        },
-                        None => {
-                            self.en_passant = Some(val.after); //Modifying board state so gen_all_moves knows to consider this square when considering en_passant
-                        }
-                    }
-                } 
             },
 
             MoveType::castle(val) => {
+                let y_positions: Vec<usize>;
                 if val.is_kingside  {
-                    /* This is redundant */ 
-                    match self.active_color {
-                        Color::White => {
-                            self.squares[8][5].piece = None;
-                            self.squares[8][8].piece = None;
-                            self.squares[8][7].piece = Some(Piece {piece_type: PieceType::King, color: Color::White });
-                            self.squares[8][6].piece = Some(Piece {piece_type: PieceType::Rook, color: Color:: White });
-                        }, 
-                        Color::Black => {
-                            self.squares[1][5].piece = None;
-                            self.squares[1][8].piece = None;
-                            self.squares[1][7].piece = Some(Piece {piece_type: PieceType::King, color: Color::Black });
-                            self.squares[1][6].piece = Some(Piece {piece_type: PieceType::Rook, color: Color:: Black });
-
-                        },
-                    }
-                } else {
-                    match self.active_color {
-                        Color::White => {
-                            self.squares[8][5].piece = None;
-                            self.squares[8][1].piece = None;
-                            self.squares[8][3].piece = Some(Piece {piece_type: PieceType::King, color: Color::White });
-                            self.squares[8][4].piece = Some(Piece {piece_type: PieceType::Rook, color: Color:: White });
-                        }, 
-                        Color::Black => {
-                            self.squares[1][5].piece = None;
-                            self.squares[1][1].piece = None;
-                            self.squares[1][3].piece = Some(Piece {piece_type: PieceType::King, color: Color::Black });
-                            self.squares[1][4].piece = Some(Piece {piece_type: PieceType::Rook, color: Color:: Black });
-
-                        },
-                    }
+                    y_positions = vec![5,8,7,6];
                 }
+                else {
+                    y_positions = vec![5,1,3,4];
+                }
+
+                self.squares[8][y_positions[0]].piece = None;
+                self.squares[8][y_positions[1]].piece = None;
+                self.squares[8][y_positions[2]].piece = Some(Piece {piece_type: PieceType::King, color: self.active_color });
+                self.squares[8][y_positions[3]].piece = Some(Piece {piece_type: PieceType::Rook, color: self.active_color });
+
             },
             MoveType::promotion(val) => {
                 self.squares[val.before.x][val.before.y].piece = None;
                 self.squares[val.after.x][val.after.y].piece = Some(val.promote_to);
+            }
+            MoveType::enPassant(val) => {
+                self.squares[val.before.x][val.before.y].piece = None;
+                self.squares[val.after.x][val.after.y].piece = Some(Piece{piece_type: PieceType::Pawn, color: self.active_color});
+                self.squares[val.en_passant.x][val.en_passant.y].piece = None;
             }
         }
 
@@ -238,7 +205,30 @@ impl BoardState {
             Color::White => self.active_color = Color::Black, 
         };
     }
+ 
+    /*
+    pub fn undo_move(&mut self, current_move: &Move) {
+        let move_type: &MoveType = &current_move.move_type;
+        //self.en_passant = None
 
+        match move_type {
+            MoveType::standard(val) => {
+                //Two cases, if en passant or not 
+                //If en passant, put the pawns back into place
+                //otherwise, just put things back where they were
+                
+                /* non en passant case */
+            },
+            MoveType::castle(val) => {
+
+            },
+            MoveType::promotion(val) => {
+
+            }
+        }
+    }
+    */
+    
     /* Checks if the king is in check given a certain position 
         Returns True if the king of active color is in check, false otherwise
     */
@@ -262,16 +252,8 @@ impl BoardState {
             }
         }
 
-        match king_pos_opt {
-            None => {
-                println!("No king!");
-                exit(-1);
-            },
-            Some(val) => {
-                king_pos = val;
-            }
-        }
-        //Finding the king
+        king_pos = king_pos_opt.expect("Could not find the king!");
+
         let pawn_square_right: Position;
         let pawn_square_left: Position;
         match board.active_color {
@@ -364,17 +346,7 @@ impl BoardState {
         }
 
         /* Looking for checks by king */
-
-        candidates = vec![
-            Position{x: king_pos.x - 1, y: king_pos.y - 1},
-            Position{x: king_pos.x - 1, y: king_pos.y},
-            Position{x: king_pos.x - 1, y: king_pos.y + 1},
-            Position{x: king_pos.x, y: king_pos.y - 1},
-            Position{x: king_pos.x, y: king_pos.y + 1},
-            Position{x: king_pos.x + 1, y: king_pos.y - 1},
-            Position{x: king_pos.x + 1, y: king_pos.y},
-            Position{x: king_pos.x + 1, y: king_pos.y + 1}
-        ];
+        candidates = self.generate_king_moves_helper(&king_pos);
 
         for mv in candidates {
             if !mv.is_valid_position() {
@@ -397,7 +369,9 @@ impl BoardState {
         /* Storing the positions of the white and black pieces */
         let mut white_pieces_pos: HashSet<Position> = HashSet::new();
         let mut black_pieces_pos: HashSet<Position> = HashSet::new();
-        let mut king_pos: Position = Position{x: 0, y: 0};
+        let mut opt_king_pos: Option<Position> = None;
+        
+        //TODO Make this a function
         for x in 1..9 {
             for y in 1..9 {
                 let curr_piece: Option<Piece> = self.squares[x][y].piece;
@@ -410,7 +384,7 @@ impl BoardState {
 
                         //Found the king 
                         if val.piece_type == PieceType::King && val.color == self.active_color {
-                            king_pos = Position{ x, y };
+                            opt_king_pos = Some(Position{ x, y });
                         }
                     },
                     None => {},
@@ -418,10 +392,7 @@ impl BoardState {
             }
         }
 
-        if king_pos.x == 0 {
-            println!("No King!");
-            exit(-1);
-        }
+        let king_pos: Position = opt_king_pos.expect("Could not find the king!");
         
         /* Current set is the one we are on */
         let curr_set: HashSet<Position>;
@@ -431,307 +402,101 @@ impl BoardState {
         }
 
         let mut move_set: Vec<Move> = Vec::new(); /* change this to a set later */
+        
+        
         let mut curr_piece: Piece;
+        let mut before: Position;
+        let mut after: Position; 
         for pos in &curr_set {
             curr_piece = self.squares[pos.x][pos.y].piece.unwrap(); //Guarantted to not be None
+            
             match curr_piece.piece_type {
                 /*
                 * Pawn Moves
                 */
                 PieceType::Pawn => {
-                    /* Looking to the left or right */
-                    let right: Position;
-                    let left: Position;
-                    let oneup: Position;
-                    let twoup: Position;
-                    let en_passant_left: Position;
-                    let en_passant_right: Position; 
-                    /* Are we on the first pawn move? are we on a promotion? */
-                    let first_move: bool;
-                    let is_promotion: bool; 
                     
-                    /* Going forwards or backwards depending on piece color */ 
-                    match curr_piece.color {
-                        Color::White => {
-                            right = Position {x: pos.x - 1, y: pos.y + 1};
-                            left = Position {x: pos.x - 1, y: pos.y - 1};
-                            oneup = Position {x: pos.x - 1, y: pos.y};
-                            twoup =  Position {x: pos.x - 2, y: pos.y};
-                            en_passant_left = Position {x: pos.x - 1, y: pos.y + 1};
-                            en_passant_right= Position {x: pos.x - 1, y: pos.y - 1};
-                            //Figure these out
-                            first_move = pos.x == 7;
-                            is_promotion = pos.x == 2;
-                        },
-                        Color::Black => {
-                            right = Position {x: pos.x - 1, y: pos.y + 1};
-                            left = Position {x: pos.x - 1, y: pos.y - 1};
-                            oneup = Position {x: pos.x + 1, y: pos.y};
-                            twoup =  Position {x: pos.x + 2, y: pos.y};
-                            en_passant_left = Position {x: pos.x + 1, y: pos.y + 1};
-                            en_passant_right= Position {x: pos.x + 1, y: pos.y - 1};
-                            //Figure these out
-                            first_move = pos.x == 2;
-                            is_promotion = pos.x - 1 == 7;
-                        }
-                    }
+                    let (right, left, oneup, twoup, en_passant_left, en_passant_right) = self.generate_pawn_moves_helper(&pos, &curr_piece.color);
+                    let (first_move, is_promotion) = self.generate_pawn_permissions(&pos, &curr_piece.color);
+                    
                     if !is_promotion {
                         /* Capturing a piece but not a promotion */
 
-                        //Capturing piece to the right
-                        if self.squares[right.x][right.y].is_occupied() {
-                            let captured = self.squares[right.x][right.y].piece.unwrap();
-                            if captured.color == curr_piece.color.opposite() {
-                                move_set.push(Move { move_type: MoveType::standard(StandardMove {
-                                    before: Position {x: pos.x, y: pos.y},
-                                    after: Position{x: right.x, y: right.y},
-                                    piece_moved: curr_piece, 
-                                    en_passant: false,
-                                }), piece_captured: Some(captured)});
-                            }
-                        }
-                        //Capturing piece to the left
-                        if self.squares[left.x][left.y].is_occupied() {
-                            let captured = self.squares[left.x][left.y].piece.unwrap();
-                            if captured.color == curr_piece.color.opposite() {
-                                move_set.push(Move { move_type: MoveType::standard(StandardMove {
-                                    before: Position {x: pos.x, y: pos.y},
-                                    after: Position{x: left.x, y: left.y},
-                                    piece_moved: curr_piece, 
-                                    en_passant: false,
-                                }), piece_captured: Some(captured)});
-                            }
-                        }
+                        /* Generating moves for 3 pawn moves */
+                        move_set.extend(self.generate_moves_from_piece(MoveValue::StandardMove, curr_piece.clone(), pos.clone(), vec![oneup], None, None));
+                        
+            
                         //Moving up two
                         if first_move && !self.squares[twoup.x][twoup.y].is_occupied() {
-                            move_set.push(Move { move_type: MoveType::standard(StandardMove {
-                                before: Position {x: pos.x, y: pos.y},
-                                after: Position{x: twoup.x, y: twoup.y},
-                                piece_moved: curr_piece, 
-                                en_passant: true,
-                            }), piece_captured: None});
+                            before = pos.clone();
+                            after = twoup.clone();
+                            move_set.push(standard(before, after, curr_piece.clone(), None));
                         }
 
-                        //Moving up one
-                        if !self.squares[oneup.x][oneup.y].is_occupied() {
-                            move_set.push(Move { move_type: MoveType::standard(StandardMove {
-                                before: Position {x: pos.x, y: pos.y},
-                                after: Position{x: oneup.x, y: oneup.y},
-                                piece_moved: curr_piece, 
-                                en_passant: false,
-                            }), piece_captured: None});
-                        }
                         //Checking enpassant
                         match self.en_passant {
                             Some(val) => {
-                                println!("en_passant at {}, {}/ {}, {}", val.x, val.y, pos.x, pos.y);
-                                
                                 let side_right = Position{x: pos.x, y: pos.y - 1};
                                 let side_left = Position{x: pos.x, y: pos.y + 1};
                                 if side_right == val {
-                                    move_set.push(Move { move_type: MoveType::standard(StandardMove {
-                                        before: Position {x: pos.x, y: pos.y},
-                                        after: en_passant_right,
-                                        piece_moved: curr_piece, 
-                                        en_passant: true,
-                                    }), piece_captured: Some(Piece {piece_type: PieceType::Pawn, color: self.active_color.opposite()})});
+                                    move_set.push(enPassant(pos.clone(), en_passant_right.clone(), 
+                                    val.clone(), Some(Piece {piece_type: PieceType::Pawn, color: self.active_color.opposite()})));
                                 } else if side_left == val {
-                                    move_set.push(Move { move_type: MoveType::standard(StandardMove {
-                                        before: Position {x: pos.x, y: pos.y},
-                                        after: en_passant_left,
-                                        piece_moved: curr_piece, 
-                                        en_passant: true,
-                                    }), piece_captured: Some(Piece {piece_type: PieceType::Pawn, color: self.active_color.opposite()})});
+                                    move_set.push(enPassant(pos.clone(), en_passant_left.clone(), 
+                                    val.clone(), Some(Piece {piece_type: PieceType::Pawn, color: self.active_color.opposite()})));
                                 }
                             },
                             None => {},
                         }
                     } else {
-                         /* Capturing a piece and it is a promotion */
-                        if self.squares[right.x][right.y].is_occupied() {
-                            let captured = self.squares[right.x][right.y].piece.unwrap();
-                            if captured.color == curr_piece.color.opposite() {
-                                move_set.push(Move { move_type: MoveType::promotion(PromotionMove {
-                                    before: Position {x: pos.x, y: pos.y},
-                                    after: Position{x: right.x, y: right.y},
-                                    promote_to: Piece {piece_type: PieceType::Queen, color: curr_piece.color}
-                                }), piece_captured: None});
-                            }
-                        }
-
-                        if self.squares[left.x][left.y].is_occupied() {
-                            let captured = self.squares[left.x][left.y].piece.unwrap();
-                            if captured.color == curr_piece.color.opposite() {
-                                move_set.push(Move { move_type: MoveType::promotion(PromotionMove {
-                                    before: Position {x: pos.x, y: pos.y},
-                                    after: Position{x: left.x, y: left.y},
-                                    promote_to: Piece {piece_type: PieceType::Queen, color: curr_piece.color}
-                                }), piece_captured: None});
-                            }
-                        }
-                        /* only allowing queen promotions for now */ 
-                        if !self.squares[oneup.x][oneup.y].is_occupied() {
-                            move_set.push(Move { move_type: MoveType::promotion(PromotionMove {
-                                before: Position {x: pos.x, y: pos.y},
-                                after: Position{x: oneup.x, y: oneup.y},
-                                promote_to: Piece {piece_type: PieceType::Queen, color: curr_piece.color}
-                            }), piece_captured: None});
-                        }
+                        //Generating all promotion moves
+                        move_set.extend(self.generate_moves_from_piece(MoveValue::PromotionMove, curr_piece.clone(), 
+                        pos.clone(), vec![right, left, oneup], None, None));
                     }
 
                 },
+                //Make a fn for this
                 PieceType::King => {
-                    let possible_king_positions: Vec<Position> = vec![
-                        Position{x: pos.x - 1, y: pos.y - 1},
-                        Position{x: pos.x - 1, y: pos.y},
-                        Position{x: pos.x - 1, y: pos.y + 1},
-                        Position{x: pos.x, y: pos.y - 1},
-                        Position{x: pos.x, y: pos.y + 1},
-                        Position{x: pos.x + 1, y: pos.y - 1},
-                        Position{x: pos.x + 1, y: pos.y},
-                        Position{x: pos.x + 1, y: pos.y + 1},
-                    ];
+                    let possible_king_positions: Vec<Position> = self.generate_king_moves_helper(&pos);
+                    move_set.extend(self.generate_moves_from_piece(MoveValue::StandardMove, curr_piece.clone(), 
+                    pos.clone(), possible_king_positions, None, None));
 
-                    /* Repeated Code */
-                    for cand in possible_king_positions {
-                        if !cand.is_valid_position() {
-                            continue;
-                        }
-
-                        if self.squares[cand.x][cand.y].is_occupied() {
-                            let captured = self.squares[cand.x][cand.y].piece.unwrap();
-                            if captured.color == self.active_color.opposite() {
-                                move_set.push(Move { move_type: MoveType::standard(StandardMove {
-                                    before: Position {x: pos.x, y: pos.y},
-                                    after: Position{x: cand.x, y: cand.y},
-                                    piece_moved: curr_piece, 
-                                    en_passant: false,
-                                }), piece_captured: Some(captured)});
-                            }
-                        } else {
-                            move_set.push(Move { move_type: MoveType::standard(StandardMove {
-                                before: Position {x: pos.x, y: pos.y},
-                                after: Position{x: cand.x, y: cand.y},
-                                piece_moved: curr_piece, 
-                                en_passant: false,
-                            }), piece_captured: None});
-                        }
-                    }
                 },
                 PieceType::Knight => {
                     let possible_knight_positions: Vec<Position> = self.generate_knight_moves_helper(pos);
-                    for cand in possible_knight_positions {
-                        if !cand.is_valid_position() {
-                            continue;
-                        }
-
-                        if self.squares[cand.x][cand.y].is_occupied() {
-                            let captured = self.squares[cand.x][cand.y].piece.unwrap();
-                            if captured.color == self.active_color.opposite() {
-                                move_set.push(Move { move_type: MoveType::standard(StandardMove {
-                                    before: Position {x: pos.x, y: pos.y},
-                                    after: Position{x: cand.x, y: cand.y},
-                                    piece_moved: curr_piece, 
-                                    en_passant: false,
-                                }), piece_captured: Some(captured)});
-                            }
-                        } else {
-                            move_set.push(Move { move_type: MoveType::standard(StandardMove {
-                                before: Position {x: pos.x, y: pos.y},
-                                after: Position{x: cand.x, y: cand.y},
-                                piece_moved: curr_piece, 
-                                en_passant: false,
-                            }), piece_captured: None});
-                        }
-                    }
+                    move_set.extend(self.generate_moves_from_piece(MoveValue::StandardMove, curr_piece.clone(), 
+                    pos.clone(), possible_knight_positions, None, None));
                 },
+
                 PieceType::Rook => {
                         //Look vertical and horizontal until you hit a piece
                         //For four loops from 0..8, each stopping one a certain position
                         //Store all possible positions, then add moves
                         //Consider making a "generate rook moves"
-                        let possible_positions: Vec<Position> = self.generate_rook_moves_helper(pos, self.active_color);
-                        for position in possible_positions {
-                            if self.squares[position.x][position.y].is_occupied() {
-                                //Getting the piece from that square and capturing it
-                                let captured = self.squares[position.x][pos.y].piece.unwrap();
-                                if captured.color == self.active_color.opposite() {
-                                    move_set.push(Move { move_type: MoveType::standard(StandardMove {
-                                        before: Position {x: pos.x, y: pos.y},
-                                        after: Position{x: position.x, y: position.y},
-                                        piece_moved: curr_piece, 
-                                        en_passant: false,
-                                    }), piece_captured: Some(captured)});
-                                }
-                            } else {
-                                move_set.push(Move { move_type: MoveType::standard(StandardMove {
-                                    before: Position {x: pos.x, y: pos.y},
-                                    after: Position{x: position.x, y: position.y},
-                                    piece_moved: curr_piece, 
-                                    en_passant: false,
-                                }), piece_captured: None});
-                        }
-                    }
+                        let possible_rook_positions: Vec<Position> = self.generate_rook_moves_helper(pos, self.active_color);
+                        move_set.extend(self.generate_moves_from_piece(MoveValue::StandardMove, curr_piece.clone(), 
+                        pos.clone(), possible_rook_positions, None, None));
                 }
                 PieceType::Bishop => {
                     //Look diagonally, for four loops
                     //"Generate bishop moves"
-                        let possible_positions: Vec<Position> = self.generate_bishop_moves_helper(pos, self.active_color);
-                        for position in possible_positions {
-                            if self.squares[position.x][position.y].is_occupied() {
-                                //Getting the piece from that square and capturing it
-                                let captured = self.squares[position.x][position.y].piece.unwrap();
-                                if captured.color == self.active_color.opposite() {
-                                    move_set.push(Move { move_type: MoveType::standard(StandardMove {
-                                        before: Position {x: pos.x, y: pos.y},
-                                        after: Position{x: position.x, y: position.y},
-                                        piece_moved: curr_piece, 
-                                        en_passant: true,
-                                    }), piece_captured: Some(captured)});
-                                }
-                            } else {
-                                move_set.push(Move { move_type: MoveType::standard(StandardMove {
-                                    before: Position {x: pos.x, y: pos.y},
-                                    after: Position{x: position.x, y: position.y},
-                                    piece_moved: curr_piece, 
-                                    en_passant: true,
-                                }), piece_captured: None});
-                        }
-                    }
+                        let possible_bishop_positions: Vec<Position> = self.generate_bishop_moves_helper(pos, self.active_color);
+                        move_set.extend(self.generate_moves_from_piece(MoveValue::StandardMove, curr_piece.clone(), 
+                        pos.clone(), possible_bishop_positions, None, None));
                 },
                 PieceType::Queen => {
                     //Look diagonally, vertically, and horizontally
                     //copy the loops from above
                     //Vec.push(generatebishop moves, generate rook moves, )
-                        let mut possible_positions: Vec<Position> = self.generate_rook_moves_helper(pos, self.active_color);
-                        possible_positions.extend(self.generate_bishop_moves_helper(pos, self.active_color));
-                        for position in possible_positions {
-                            if self.squares[position.x][position.y].is_occupied() {
-                                //Getting the piece from that square and capturing it
-                                let captured = self.squares[position.x][pos.y].piece.unwrap();
-                                if captured.color == self.active_color.opposite() {
-                                    move_set.push(Move { move_type: MoveType::standard(StandardMove {
-                                        before: Position {x: pos.x, y: pos.y},
-                                        after: Position{x: position.x, y: position.y},
-                                        piece_moved: curr_piece, 
-                                        en_passant: false,
-                                    }), piece_captured: Some(captured)});
-                                }
-                            } else {
-                                move_set.push(Move { move_type: MoveType::standard(StandardMove {
-                                    before: Position {x: pos.x, y: pos.y},
-                                    after: Position{x: position.x, y: position.y},
-                                    piece_moved: curr_piece, 
-                                    en_passant: false,
-                                }), piece_captured: None});
-                        }
-                    }
+                        let possible_queen_positions: Vec<Position> = self.generate_rook_moves_helper(pos, self.active_color);
+                        move_set.extend(self.generate_moves_from_piece(MoveValue::StandardMove, curr_piece.clone(), 
+                        pos.clone(), possible_queen_positions, None, None));
                 },
                 PieceType::None => {},
             }
         }
         
-        //Find the king in every call to 
+        //Find the king in every call to, fix this with a do, undo move pattern
         let mut legal_moves: Vec<Move> = Vec::new();
         for mv in move_set {
             let mut board_copy: BoardState = self;
@@ -751,11 +516,145 @@ impl BoardState {
             }
             exit(1);
         }
-        return legal_moves;
+        
+        legal_moves
     }
 
-    /* Given a position, this function generates a set of positions for that knight */
+    /* Generates moves from a given piece and related info */
+    fn generate_moves_from_piece(&self, move_type: MoveValue, curr_piece: Piece, curr_piece_position: Position, possible_positions: Vec<Position>, castle_bool: Option<bool>, en_passant: Option<Position>) -> Vec<Move> {
+        let mut generated_moves: Vec<Move> = Vec::new();
+        let is_stoppable: bool = 
+            (curr_piece.piece_type == PieceType::Rook) || 
+            (curr_piece.piece_type == PieceType::Bishop) || 
+            (curr_piece.piece_type == PieceType::Queen);
+        
+            for position in possible_positions {
+                if !position.is_valid_position() {
+                    continue;
+                }
 
+                match move_type {
+                    MoveValue::StandardMove => {
+                        match self.squares[position.x][position.y].piece {
+                            Some(val) => {
+                                if val.color == self.active_color.opposite() {
+                                    generated_moves.push(standard(curr_piece_position.clone(), position, curr_piece.clone(), Some(val)))
+                                }
+                                if is_stoppable {
+                                    break; //Break?
+                                }
+                            },
+                            None => {
+                                generated_moves.push(standard(curr_piece_position.clone(), position, curr_piece.clone(), None))
+                            }
+                        }
+                    },
+                    MoveValue::CastleMove => {
+                        generated_moves.push(castle(castle_bool.unwrap()));
+                    },
+                    MoveValue::PromotionMove => {
+                        match self.squares[position.x][position.y].piece {
+                            Some(val) => {
+                                if val.color == self.active_color.opposite() {
+                                    generated_moves.push(promotion(curr_piece_position.clone(), position.clone(), 
+                                    Piece{piece_type: PieceType::Queen, color: self.active_color}, Some(val)));
+                                }
+                            },
+                            None => {
+                                generated_moves.push(promotion(curr_piece_position.clone(), position.clone(), 
+                                Piece{piece_type: PieceType::Queen, color: self.active_color}, None));
+                            }
+                        }
+                    },
+                    MoveValue::EnPassantMove => {
+                        generated_moves.push(enPassant(curr_piece_position.clone(), position.clone(), en_passant.unwrap(),
+                        Some(Piece{piece_type :PieceType::Pawn, color: self.active_color.opposite()})));
+                    }
+                }
+        }
+
+        generated_moves
+    }
+    /* Generate pawn moves for a given square/color */
+    fn generate_pawn_moves_helper(&self, pos: &Position, color: &Color) -> 
+    (
+        Position,Position,Position, Position,Position,Position,
+    ) {
+        let right: Position;
+        let left: Position;
+        let oneup: Position;
+        let twoup: Position;
+        let en_passant_left: Position;
+        let en_passant_right: Position; 
+        /* Are we on the first pawn move? are we on a promotion? */
+        /*
+        let first_move: bool;
+        let is_promotion: bool; 
+        */
+
+        /* Going forwards or backwards depending on piece color */ 
+        match color {
+            Color::White => {
+                right = Position {x: pos.x - 1, y: pos.y + 1};
+                left = Position {x: pos.x - 1, y: pos.y - 1};
+                oneup = Position {x: pos.x - 1, y: pos.y};
+                twoup =  Position {x: pos.x - 2, y: pos.y};
+                en_passant_left = Position {x: pos.x - 1, y: pos.y + 1};
+                en_passant_right= Position {x: pos.x - 1, y: pos.y - 1};
+                //Figure these out
+                //first_move = pos.x == 7;
+                //is_promotion = pos.x == 2;
+            },
+            Color::Black => {
+                right = Position {x: pos.x - 1, y: pos.y + 1};
+                left = Position {x: pos.x - 1, y: pos.y - 1};
+                oneup = Position {x: pos.x + 1, y: pos.y};
+                twoup =  Position {x: pos.x + 2, y: pos.y};
+                en_passant_left = Position {x: pos.x + 1, y: pos.y + 1};
+                en_passant_right= Position {x: pos.x + 1, y: pos.y - 1};
+                //Figure these out
+                //first_move = pos.x == 2;
+                //is_promotion = pos.x - 1 == 7;
+            }
+        }
+
+        (right, left, oneup, twoup, en_passant_left, en_passant_right)
+    }
+
+    /* Generates two bools to record whether a pawn move is the first move by that pawn or if it is a promotion move */
+    fn generate_pawn_permissions(&self, pos: &Position, color: &Color) -> (bool, bool) {
+        let first_move: bool;
+        let is_promotion: bool;
+
+        match color {
+            Color::White => {
+                first_move = pos.x == 7;
+                is_promotion = pos.x == 2;
+            }
+            Color::Black => {
+                first_move = pos.x == 2;
+                is_promotion = pos.x == 7; //POSSIBLE BUG SOURCE
+            }
+        }
+
+        (first_move, is_promotion)
+    }
+    /* Generates possible king_moves given a square */
+    fn generate_king_moves_helper(&self, pos: &Position) -> Vec<Position> {
+        vec![
+            Position{x: pos.x - 1, y: pos.y - 1},
+            Position{x: pos.x - 1, y: pos.y},
+            Position{x: pos.x - 1, y: pos.y + 1},
+            Position{x: pos.x, y: pos.y - 1},
+            Position{x: pos.x, y: pos.y + 1},
+            Position{x: pos.x + 1, y: pos.y - 1},
+            Position{x: pos.x + 1, y: pos.y},
+            Position{x: pos.x + 1, y: pos.y + 1},
+        ].into_iter()
+        .filter(|pos| pos.is_valid_position())
+        .collect()
+    }
+    /* Given a position, this function generates a set of positions for that knight */
     fn generate_knight_moves_helper(&self, pos: &Position) -> Vec<Position> {
         let mut possible_knight_positions: Vec<Position> = Vec::new();
         for u in 0..3 {
@@ -775,7 +674,10 @@ impl BoardState {
             }
         }
 
-        return possible_knight_positions;
+        possible_knight_positions
+        .into_iter()
+        .filter(|pos| pos.is_valid_position())
+        .collect()
     }
 
     /* Given a position on the board and a color, this function generates a set of squares

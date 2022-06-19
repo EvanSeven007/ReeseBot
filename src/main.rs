@@ -11,9 +11,9 @@ use board_state::BoardState;
 
 
 fn main() {
-    let board_state_fen = "r4nk1/4Rp1p/1p4p1/pP1N4/3P2P1/3r4/5P1P/R5K1 b - - 3 25";
-    let mut board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
-    let mut board: BoardState;
+    let board_state_fen = "k7/5P2/8/8/8/8/8/K7 w - - 3 25";
+    let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
+    let board: BoardState;
 
     match board_state {
         Ok(_) => board = board_state.unwrap(),
