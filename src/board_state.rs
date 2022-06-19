@@ -541,7 +541,7 @@ impl BoardState {
                                     generated_moves.push(standard(curr_piece_position.clone(), position, curr_piece.clone(), Some(val)))
                                 }
                                 if is_stoppable {
-                                    break; //Break?
+                                    continue; //Break?
                                 }
                             },
                             None => {

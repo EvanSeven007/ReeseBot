@@ -11,7 +11,7 @@ use board_state::BoardState;
 
 
 fn main() {
-    let board_state_fen = "k7/5P2/8/8/8/8/8/K7 w - - 3 25";
+    let board_state_fen = "8/k7/3r4/8/8/3R4/8/K7 w - - 3 25";
     let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
     let board: BoardState;
 
