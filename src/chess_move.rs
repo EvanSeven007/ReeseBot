@@ -1,6 +1,5 @@
-use crate::piece::{Piece};
-use crate::board_state::{BoardState};
-/* Position in on a board */ 
+use crate::piece::Piece;
+/* Position in on a board */
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub struct Position {
     pub x: usize,
@@ -9,11 +8,14 @@ pub struct Position {
 
 impl Position {
     pub fn swap(&self) -> Position {
-        Position {x: self.y, y: self.x}
+        Position {
+            x: self.y,
+            y: self.x,
+        }
     }
 
     pub fn is_valid_position(&self) -> bool {
-        return self.x >= 1 && self.x <= 8 && self.y >= 1 && self.y <= 8;
+        self.x >= 1 && self.x <= 8 && self.y >= 1 && self.y <= 8
     }
 }
 
@@ -24,20 +26,20 @@ pub enum MoveValue {
     PromotionMove,
     EnPassantMove,
 }
-/* All moves are of one of three types */ 
+/* All moves are of one of three types */
 pub enum MoveType {
-    standard(StandardMove), //move a piece from one square to another
-    castle(CastleMove), //Castling 
-    promotion(PromotionMove), //upgrade pawn by getting to the back row
-    enPassant(EnPassantMove),
-
+    Standard(StandardMove),   //move a piece from one square to another
+    Castle(CastleMove),       //Castling
+    Promotion(PromotionMove), //upgrade pawn by getting to the back row
+    EnPassant(EnPassantMove),
 }
 
-/* Standard moves involve normal captures and enpassants */ 
-pub struct StandardMove { //enpassant is in this?
-    pub before: Position, 
-    pub after: Position, 
-    pub piece_moved: Piece, 
+/* Standard moves involve normal captures and enpassants */
+pub struct StandardMove {
+    //enpassant is in this?
+    pub before: Position,
+    pub after: Position,
+    pub piece_moved: Piece,
 }
 
 /* Castles are either king or queenside */
@@ -58,16 +60,25 @@ pub struct EnPassantMove {
     pub en_passant: Position, //Square of captured piece
 }
 
-/* A general move */ 
+/* A general move */
 pub struct Move {
     pub move_type: MoveType,
-    pub piece_captured: Option<Piece>, 
+    pub piece_captured: Option<Piece>,
 }
 
 /* Constructor functions for each of the basic moves */
-pub fn standard(before: Position, after: Position, piece_moved: Piece, piece_captured: Option<Piece>) -> Move {
-    let move_type: MoveType = MoveType::standard(StandardMove{before, after, piece_moved});
-    
+pub fn standard(
+    before: Position,
+    after: Position,
+    piece_moved: Piece,
+    piece_captured: Option<Piece>,
+) -> Move {
+    let move_type: MoveType = MoveType::Standard(StandardMove {
+        before,
+        after,
+        piece_moved,
+    });
+
     Move {
         move_type,
         piece_captured,
@@ -75,7 +86,7 @@ pub fn standard(before: Position, after: Position, piece_moved: Piece, piece_cap
 }
 
 pub fn castle(is_kingside: bool) -> Move {
-    let move_type: MoveType = MoveType::castle(CastleMove{is_kingside});
+    let move_type: MoveType = MoveType::Castle(CastleMove { is_kingside });
 
     Move {
         move_type,
@@ -83,9 +94,18 @@ pub fn castle(is_kingside: bool) -> Move {
     }
 }
 
-pub fn promotion(before: Position, after: Position, promote_to: Piece, piece_captured: Option<Piece>) -> Move {
-    let move_type: MoveType = MoveType::promotion(PromotionMove{before, after, promote_to});
-    
+pub fn promotion(
+    before: Position,
+    after: Position,
+    promote_to: Piece,
+    piece_captured: Option<Piece>,
+) -> Move {
+    let move_type: MoveType = MoveType::Promotion(PromotionMove {
+        before,
+        after,
+        promote_to,
+    });
+
     Move {
         move_type,
         piece_captured,
@@ -94,8 +114,17 @@ pub fn promotion(before: Position, after: Position, promote_to: Piece, piece_cap
 
 //Could be done better
 //Enpassant is position of captured pawn
-pub fn enPassant(before: Position, after: Position, en_passant: Position, piece_captured: Option<Piece>) -> Move{
-    let move_type: MoveType = MoveType::enPassant(EnPassantMove{before, after, en_passant});
+pub fn en_passant(
+    before: Position,
+    after: Position,
+    en_passant: Position,
+    piece_captured: Option<Piece>,
+) -> Move {
+    let move_type: MoveType = MoveType::EnPassant(EnPassantMove {
+        before,
+        after,
+        en_passant,
+    });
 
     Move {
         move_type,
@@ -112,7 +141,7 @@ impl Move {
             "O-O" => parsed_move = Move {
                 move_type: MoveType::castle{
                     is_kingside: true
-                }, 
+                },
                 piece_captured: None
             },
 
@@ -123,3 +152,4 @@ impl Move {
     }
 }
 */
+
