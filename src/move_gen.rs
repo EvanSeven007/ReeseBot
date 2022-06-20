@@ -577,9 +577,7 @@ pub fn generate_rook_moves_helper(
 
         if !square.is_occupied() {
             rook_positions.push(curr_pos);
-        }
-
-        if let Some(piece) = square.piece {
+        } else if let Some(piece) = square.piece {
             if piece.color == color.opposite() {
                 rook_positions.push(curr_pos);
             }
@@ -599,9 +597,7 @@ pub fn generate_rook_moves_helper(
 
         if !square.is_occupied() {
             rook_positions.push(curr_pos);
-        }
-
-        if let Some(piece) = square.piece {
+        } else if let Some(piece) = square.piece {
             if piece.color == color.opposite() {
                 rook_positions.push(curr_pos);
             }
@@ -622,9 +618,7 @@ pub fn generate_rook_moves_helper(
 
         if !square.is_occupied() {
             rook_positions.push(curr_pos);
-        }
-
-        if let Some(piece) = square.piece {
+        } else if let Some(piece) = square.piece {
             if piece.color == color.opposite() {
                 rook_positions.push(curr_pos);
             }
@@ -643,9 +637,7 @@ pub fn generate_rook_moves_helper(
 
         if !square.is_occupied() {
             rook_positions.push(curr_pos);
-        }
-
-        if let Some(piece) = square.piece {
+        } else if let Some(piece) = square.piece {
             if piece.color == color.opposite() {
                 rook_positions.push(curr_pos);
             }
@@ -678,9 +670,7 @@ pub fn generate_bishop_moves_helper(
 
         if !square.is_occupied() {
             bishop_positions.push(curr_pos);
-        }
-
-        if let Some(piece) = square.piece {
+        } else if let Some(piece) = square.piece {
             if piece.color == color.opposite() {
                 bishop_positions.push(curr_pos);
             }
@@ -699,9 +689,7 @@ pub fn generate_bishop_moves_helper(
 
         if !square.is_occupied() {
             bishop_positions.push(curr_pos);
-        }
-
-        if let Some(piece) = square.piece {
+        } else if let Some(piece) = square.piece {
             if piece.color == color.opposite() {
                 bishop_positions.push(curr_pos);
             }
@@ -721,9 +709,7 @@ pub fn generate_bishop_moves_helper(
 
         if !square.is_occupied() {
             bishop_positions.push(curr_pos);
-        }
-
-        if let Some(piece) = square.piece {
+        } else if let Some(piece) = square.piece {
             if piece.color == color.opposite() {
                 bishop_positions.push(curr_pos);
             }
@@ -743,9 +729,7 @@ pub fn generate_bishop_moves_helper(
 
         if !square.is_occupied() {
             bishop_positions.push(curr_pos);
-        }
-
-        if let Some(piece) = square.piece {
+        } else if let Some(piece) = square.piece {
             if piece.color == color.opposite() {
                 bishop_positions.push(curr_pos);
             }
