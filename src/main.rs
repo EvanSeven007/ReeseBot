@@ -18,6 +18,7 @@ fn main() {
         Err(e) => panic!("Error: {}", e),
     }
     
+    //NONCE
     
     println!("STARTING::::::");
     let moves = move_gen::gen_all_moves(&board);
