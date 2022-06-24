@@ -56,5 +56,4 @@ impl Square {
             PieceType::None => format!("{}{}{}", left_bracket, " ", right_bracket),
         }
     }
-
 }

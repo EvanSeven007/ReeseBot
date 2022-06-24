@@ -27,7 +27,7 @@ impl BoardState {
         //Creating an 8x8 array of uninitialized arrays
         let mut squares = [[Square {piece: None, color: (Color::White) }; 10]; 10]; //Setting to white and then updating later
         //Assigning colors, but not charged
-        for index in 1..9  {
+        for index in 1..9 {
             for inner_index in 1..9 {
                 squares[index][inner_index].color = BoardState::get_color(&index, &inner_index);
             }
@@ -67,6 +67,7 @@ impl BoardState {
         let mut can_castle_white_queenside = false;
         let mut can_castle_black_kingside = false;
         let mut can_castle_black_queenside = false;
+        
         /* This is unforgiveably stupid */
         for fen_entry in fen_strings[2].chars() {
             match fen_entry {
@@ -106,16 +107,11 @@ impl BoardState {
                 'h' => x = 8,
                 _ => panic!("fen string enpassant malformed!"),
             };
-            y = (9 - en_passant_string[1].to_digit(10).unwrap_or_else(|| panic!("fen string enpassant malformed!"))) as usize;
-            /* This is just atrocious Evan, fix this with an unwrap or else*/
-            /*
-            if !en_passant_string[1].is_digit(10) {
-                return Err("fen string enpassant malformed!")
-            }
-            //Accounting for how we represent the board state in our own coordinates
-            y = (9 - en_passant_string[1].to_digit(10).unwrap()) as usize; 
-            */
-            if y < 1 || y > 8 {
+            y = (9 - en_passant_string[1]
+                .to_digit(10)
+                .unwrap_or_else(|| panic!("fen string enpassant malformed!"))) as usize;
+
+            if !(1..9).contains(&y) {
                 return Err("fen string enpassant malformed!")
             }
             en_passant = Some(Position{ x , y }.swap()); //Accounting for how we index array
@@ -149,7 +145,7 @@ impl BoardState {
 
     /* Gets the color of a board from its coordinates */
     fn get_color(val1: &usize, val2: &usize) -> Color {
-        if val1 < &0 || val1 > &8 || val2 < &0 || val2 > &8 {
+        if (val1 > &8 || val2 > &8) {
             panic!("Not a valid coordinate {} {}", val1, val2);
         }
 
@@ -157,9 +153,9 @@ impl BoardState {
         let val2_is_odd: bool = val2 % 2 == 0;
 
         if (val1_is_odd && val2_is_odd) || (!val1_is_odd && !val2_is_odd) {
-            return Color::White;
+            Color::White
         } else {
-            return Color::Black;
+            Color::Black
         }
     }
 
@@ -209,38 +205,18 @@ impl BoardState {
             Color::White => self.active_color = Color::Black, 
         };
     }
- 
-    /*
-    pub fn undo_move(&mut self, current_move: &Move) {
-        let move_type: &MoveType = &current_move.move_type;
-        //self.en_passant = None
-
-        match move_type {
-            MoveType::standard(val) => {
-                //Two cases, if en passant or not 
-                //If en passant, put the pawns back into place
-                //otherwise, just put things back where they were
-                
-                /* non en passant case */
-            },
-            MoveType::castle(val) => {
-
-            },
-            MoveType::promotion(val) => {
-
-            }
-        }
-    }
-    */
     
     /* Checks if the king is in check given a certain position 
         Returns True if the king of active color is in check, false otherwise
     */
     pub fn is_in_check(self: BoardState) -> bool {
+        false //Need refactor
+        
         /* 
         * Looking for check on the diagonals 
         */
         //Checking pawn moves
+        /*
         let board = self;
         let mut king_pos_opt: Option<Position> = None;
         let king_pos: Position;
@@ -313,7 +289,7 @@ impl BoardState {
             }
         }
 
-        /* Checking check by diagonols */
+        /* Checking check by diagonals */
         candidates = generate_bishop_moves_helper(&board, &king_pos, board.active_color);
         for mv in candidates {
             if board.squares[mv.x][mv.y].is_occupied() {
@@ -356,6 +332,7 @@ impl BoardState {
             if !mv.is_valid_position() {
                 continue;
             }
+
             if board.squares[mv.x][mv.y].is_occupied() {
                 let p = board.squares[mv.x][mv.y].piece.unwrap();
                 if p.piece_type == PieceType::King && p.color != board.active_color {
@@ -367,6 +344,7 @@ impl BoardState {
 
 
         return false;
+        */
     }
 
     pub fn print_board(&self) {

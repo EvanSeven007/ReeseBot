@@ -9,7 +9,7 @@ use board_state::BoardState;
 
 
 fn main() {
-    let board_state_fen = "8/k7/3r4/8/8/3R4/8/K7 w - - 3 25";
+    let board_state_fen = "3k4/8/8/5pP1/8/8/r7/R3K3 w Q f5 3 25"; //Still recognizing as Kinside castle
     let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
     let board: BoardState;
 
@@ -25,5 +25,8 @@ fn main() {
         let mut cl = board.clone();
         cl.make_move(&mv);
         cl.print_board();
+        if let Some(pos) = cl.en_passant {
+            println!("{} {}", pos.x, pos.y);
+        }
     }
 }

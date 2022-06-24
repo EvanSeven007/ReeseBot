@@ -7,13 +7,70 @@ pub struct Position {
     pub y: usize,
 }
 
+pub enum Direction {
+    Right,
+    Left,
+    Up,
+    Down,
+    UpRight,
+    UpLeft,
+    DownRight,
+    DownLeft,
+}
+
+///Struct that encapsulates the numerical position on a chessboard 
 impl Position {
     pub fn swap(&self) -> Position {
         Position {x: self.y, y: self.x}
     }
 
     pub fn is_valid_position(&self) -> bool {
-        return self.x >= 1 && self.x <= 8 && self.y >= 1 && self.y <= 8;
+        self.x >= 1 && self.x <= 8 && self.y >= 1 && self.y <= 8
+    }
+
+    pub fn right(&self) -> Position {
+        Position{x: self.x, y: self.y + 1}
+    }
+
+    pub fn left(&self) -> Position {
+        Position{x: self.x, y: self.y - 1}
+    }
+
+    pub fn up(&self) -> Position {
+        Position{x: self.x - 1, y: self.y}
+    }
+
+    pub fn down(&self) -> Position {
+        Position{x: self.x + 1, y: self.y}
+    } 
+
+    pub fn next_position(&self, dir: &Direction) -> Position {
+        match dir {
+            Direction::Right => {
+                self.right()
+            },
+            Direction::Left => {
+                self.left()
+            },
+            Direction::Up => {
+                self.up()
+            },
+            Direction::Down => {
+                self.down()
+            },
+            Direction::UpRight => {
+                self.up().right()
+            },
+            Direction::UpLeft => {
+                self.up().left()
+            },
+            Direction::DownRight => {
+                self.down().right()
+            },
+            Direction::DownLeft => {
+                self.down().left()
+            },
+        }
     }
 }
 
@@ -102,24 +159,3 @@ pub fn enPassant(before: Position, after: Position, en_passant: Position, piece_
         piece_captured,
     }
 }
-/*
-impl Move {
-    /* takes in a string and gives a corresponding move for it, and then checks if that move is valid */
-    /* If the move is valid, it makes the move on the board, otherwise it prompts for a new move */
-    pub fn parse_move(board: &mut BoardState, input: &str) {
-        let mut parsed_move: Move;
-        match input {
-            "O-O" => parsed_move = Move {
-                move_type: MoveType::castle{
-                    is_kingside: true
-                }, 
-                piece_captured: None
-            },
-
-            _ => {
-                println!("Malformed Move: Please Enter Another");
-            }
-        }
-    }
-}
-*/

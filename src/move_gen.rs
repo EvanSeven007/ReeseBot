@@ -50,78 +50,107 @@ pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
         curr_piece = board.squares[pos.x][pos.y].piece.unwrap(); //Guarantted to not be None
         
         match curr_piece.piece_type {
-            /*
-            * Pawn Moves
-            */
             PieceType::Pawn => {
-                
-                let (right_up, left_up, oneup, twoup, en_passant_left, en_passant_right) = generate_pawn_moves_helper(&pos, &curr_piece.color);
-                let (first_move, is_promotion) = generate_pawn_permissions(&pos, &curr_piece.color);
-                
-                if !is_promotion {
-                    /* Capturing a piece but not a promotion */
-
-                    /* Generating moves for 3 pawn moves */
-                    move_set.extend(generate_moves_from_pawn(&board, curr_piece, pos.clone(), right_up, left_up, oneup, twoup, en_passant_right, en_passant_left));
-
-                    //Checking enpassant
-                    match board.en_passant {
-                        Some(val) => {
-                            let side_right = Position{x: pos.x, y: pos.y - 1};
-                            let side_left = Position{x: pos.x, y: pos.y + 1};
-                            if side_right == val {
-                                move_set.push(enPassant(pos.clone(), en_passant_right.clone(), 
-                                val.clone(), Some(Piece {piece_type: PieceType::Pawn, color: board.active_color.opposite()})));
-                            } else if side_left == val {
-                                move_set.push(enPassant(pos.clone(), en_passant_left.clone(), 
-                                val.clone(), Some(Piece {piece_type: PieceType::Pawn, color: board.active_color.opposite()})));
-                            }
-                        },
-                        None => {},
-                    }
-                } else {
-                    //Generating all promotion moves
-                    move_set.extend(generate_moves_from_piece(&board, MoveValue::PromotionMove, curr_piece.clone(), 
-                    pos.clone(), vec![right_up, left_up, oneup], None));
-                }
-
+                move_set.extend(generate_pawn_moves(board, curr_piece, pos));
             },
             //Make a fn for this
             PieceType::King => {
-                let possible_king_positions: Vec<Position> = generate_king_moves_helper(&board, &pos);
-                move_set.extend(generate_moves_from_piece(&board, MoveValue::StandardMove, curr_piece.clone(), 
-                pos.clone(), possible_king_positions, None));
-
+                let mut possible_king_moves: Vec<Move> = vec![
+                    pos.up().left(),
+                    pos.up(),
+                    pos.up().right(),
+                    pos.left(),
+                    pos.right(),
+                    pos.down().left(),
+                    pos.down(),
+                    pos.down().right()
+                ]
+                .into_iter()
+                .filter(|val| -> bool {
+                    let square = board.squares[val.x][val.y]; 
+                    val.is_valid_position() && ( //Must be a valid square
+                        //Square isn't occupied
+                        !square.is_occupied() || 
+                        //Square is occupied, but we can capture it
+                        square.piece.unwrap().color == board.active_color.opposite() 
+                    )
+                })
+                .map(|val| -> Move {
+                        if let Some(piece_captured) = board.squares[val.x][val.y].piece {
+                            standard(*pos, val, curr_piece.clone(), Some(piece_captured)) //Capture
+                        } else {
+                            standard(*pos, val, curr_piece.clone(), None) //No capture
+                        }
+                    }
+                )
+                .collect();
+                //Castle moves
+                move_set.extend(generate_castle_moves(&king_pos, &board.castle_rights, curr_piece.color, &board));
+                move_set.extend(possible_king_moves);
             },
             PieceType::Knight => {
-                let possible_knight_positions: Vec<Position> = generate_knight_moves_helper(pos);
-                move_set.extend(generate_moves_from_piece(&board, MoveValue::StandardMove, curr_piece.clone(), 
-                pos.clone(), possible_knight_positions, None));
+                let mut possible_knight_positions: Vec<Move> = vec![
+                    pos.up().up().right(),
+                    pos.up().up().left(),
+                    pos.down().down().right(),
+                    pos.down().down().left(),
+                    pos.left().left().up(),
+                    pos.left().left().down(),
+                    pos.right().right().up(),
+                    pos.right().right().down(),
+                ]
+                .into_iter()
+                .filter(|val| -> bool {
+                    val.is_valid_position() && ( //Must be a valid square
+                        //Square isn't occupied
+                        !board.squares[val.x][val.y].is_occupied() || 
+                        //Square is occupied, but we can capture it
+                        board.squares[val.x][val.y].piece.unwrap().color == board.active_color.opposite() 
+                    )
+                })
+                .map(|val| -> Move {
+                        if let Some(piece_captured) = board.squares[val.x][val.y].piece {
+                            standard(*pos, val, curr_piece.clone(), Some(piece_captured)) //Capture
+                        } else {
+                            standard(*pos, val, curr_piece.clone(), None) //No capture
+                        }
+                    }
+                )
+                .collect();
+
+                move_set.extend(possible_knight_positions);
             },
 
             PieceType::Rook => {
-                    //Look vertical and horizontal until you hit a piece
-                    //For four loops from 0..8, each stopping one a certain position
-                    //Store all possible positions, then add moves
-                    //Consider making a "generate rook moves"
-                    let possible_rook_positions: Vec<Position> = generate_rook_moves_helper(&board, pos, board.active_color);
-                    move_set.extend(generate_moves_from_piece(&board, MoveValue::StandardMove, curr_piece.clone(), 
-                    pos.clone(), possible_rook_positions, None));
+                    let mut rook_positions: Vec<Move> = Vec::new();
+                    let mut curr_pos: Position; 
+                    /* Looking horizontally */
+                    for dir in vec![Direction::Right, Direction::Left, Direction::Up, Direction::Down] {
+                        rook_positions.extend(move_in_direction(*pos, &dir, curr_piece.clone(), board));
+                    }
+
+                    move_set.extend(rook_positions);
             },
             PieceType::Bishop => {
-                //Look diagonally, for four loops
-                //"Generate bishop moves"
-                    let possible_bishop_positions: Vec<Position> = generate_bishop_moves_helper(&board, pos, board.active_color);
-                    move_set.extend(generate_moves_from_piece(&board, MoveValue::StandardMove, curr_piece.clone(), 
-                    pos.clone(), possible_bishop_positions, None));
+                let mut bishop_positions: Vec<Move> = Vec::new();
+                let mut curr_pos: Position; 
+                /*Looking diagonally */
+                for dir in vec![Direction::UpRight, Direction::UpLeft, Direction::DownRight, Direction::DownLeft] {
+                    bishop_positions.extend(move_in_direction(*pos, &dir, curr_piece.clone(), board));
+                }
+
+                move_set.extend(bishop_positions);
             },
             PieceType::Queen => {
-                //Look diagonally, vertically, and horizontally
-                //copy the loops from above
-                //Vec.push(generatebishop moves, generate rook moves, )
-                    let possible_queen_positions: Vec<Position> = generate_rook_moves_helper(&board, pos, board.active_color);
-                    move_set.extend(generate_moves_from_piece(&board, MoveValue::StandardMove, curr_piece.clone(), 
-                    pos.clone(), possible_queen_positions, None));
+                let mut queen_positions: Vec<Move> = Vec::new();
+                let mut curr_pos: Position; 
+                /*Looking horizontally and diagonally */
+                for dir in vec![Direction::Right, Direction::Left, Direction::Up, Direction::Down,
+                    Direction::UpRight, Direction::UpLeft, Direction::DownRight, Direction::DownLeft] {
+                    queen_positions.extend(move_in_direction(*pos, &dir, curr_piece.clone(), board));
+                }
+
+                move_set.extend(queen_positions);
             },
             PieceType::None => {},
         }
@@ -132,7 +161,7 @@ pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
     for mv in move_set {
         let mut board_copy: BoardState = *board;
         board_copy.make_move(&mv);
-        board_copy.active_color = board_copy.active_color.opposite();
+        board_copy.active_color = board_copy.active_color.opposite(); //Bug here lol
         //Why does this work?
         if !board_copy.is_in_check() {
             legal_moves.push(mv);
@@ -150,150 +179,170 @@ pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
     legal_moves
 }
 
-pub fn generate_moves_from_pawn
-(
-    board: &BoardState, 
-    curr_piece: Piece, 
-    curr_piece_position: Position, 
-    right_up: Position, 
-    left_up: Position, 
-    one_up: Position,
-    two_up: Position, //Has a value if two_up is not occupied
-    right: Position,
-    left: Position,
-) -> Vec<Move> {
-    let mut pawn_moves: Vec<Move> = Vec::new();
+pub fn generate_castle_moves(king_pos: &Position, castle_rights: &CastleRights, color: Color, board: &BoardState) -> Vec<Move> {
+    let mut castle_moves: Vec<Move> = Vec::new();
+    let king_side_squares;
+    let queen_side_squares;
+    let mut king_side: bool = true;
+    let mut queen_side: bool = true;
+    match color.clone() {
+        Color::White => {
+            if castle_rights.can_castle_white_kingside {
+                king_side_squares = vec![
+                    board.squares[king_pos.right().x][king_pos.right().y],
+                    board.squares[king_pos.right().right().x][king_pos.right().right().y]
+                ];
+                for square in &king_side_squares {
+                    if square.is_occupied() {
+                        king_side = false;
+                    }
+                }
+                if king_side {
+                    castle_moves.push(castle(true));
+                }
+            }
+            if castle_rights.can_castle_white_queenside {
+                queen_side_squares = vec![
+                    board.squares[king_pos.left().x][king_pos.left().y],
+                    board.squares[king_pos.left().left().x][king_pos.left().left().y],
+                    board.squares[king_pos.left().left().left().x][king_pos.left().left().left().y]
+                ];
 
-    if !board.squares[one_up.x][one_up.y].is_occupied() {
-        pawn_moves.push(standard(curr_piece_position.clone(), one_up, curr_piece.clone(), None));
-    }
+                for square in &queen_side_squares {
+                    if square.is_occupied() {
+                        queen_side = false;
+                    }
+                }
 
-    if !board.squares[two_up.x][two_up.y].is_occupied() {
-        pawn_moves.push(standard(curr_piece_position.clone(), two_up, curr_piece.clone(), None));
-    }
+                if queen_side {
+                    castle_moves.push(castle(true));
+                }
+            }
+        },
+        Color::Black => {
+            if castle_rights.can_castle_black_kingside {
+                king_side_squares = vec![
+                    board.squares[king_pos.left().x][king_pos.left().y],
+                    board.squares[king_pos.left().left().x][king_pos.left().left().y]
+                ];
+                for square in &king_side_squares {
+                    if square.is_occupied() {
+                        king_side = false;
+                    }
+                }
+                if king_side {
+                    castle_moves.push(castle(true));
+                }
+            }
+            if castle_rights.can_castle_black_queenside {
+                queen_side_squares = vec![
+                    board.squares[king_pos.right().x][king_pos.right().y],
+                    board.squares[king_pos.right().right().x][king_pos.right().right().y],
+                    board.squares[king_pos.right().right().right().x][king_pos.right().right().right().y]
+                ];
 
-    //Capturing left and right
-    for pos in vec![left_up, right_up] {
-        if board.squares[pos.x][pos.y].is_occupied() {
-            let p = board.squares[pos.x][pos.y].piece.unwrap();
-            if p.color == curr_piece.color.opposite() {
-                pawn_moves.push(standard(curr_piece_position.clone(), pos.clone(), curr_piece.clone(), Some(p)));
+                for square in &queen_side_squares {
+                    if square.is_occupied() {
+                        queen_side = false;
+                    }
+                }
+
+                if queen_side {
+                    castle_moves.push(castle(true));
+                }
             }
         }
     }
 
-    match board.en_passant {
-        Some(val) => {
-            for pos in vec![left, right] {
-                if pos == val {
-                    pawn_moves.push(enPassant(curr_piece_position.clone(), val.clone(), val.clone(), Some(Piece{piece_type: PieceType::Pawn, color: curr_piece.color.opposite()})));
+    castle_moves
+}
+
+pub fn generate_pawn_moves(board: &BoardState, curr_pawn: Piece,pos: &Position) -> Vec<Move> {
+    assert!(curr_pawn.piece_type == PieceType::Pawn);
+    let mut pawn_moves: Vec<Move> = Vec::new();
+    let (first_move, is_promotion) = generate_pawn_permissions(pos, &curr_pawn.color);
+    let (right_up, left_up, one_up, two_up, en_passant_left, en_passant_right) = generate_pawn_moves_helper(pos, &curr_pawn.color);
+    
+    //Not a promotion
+    if !is_promotion {
+        //moving one up
+        if !board.squares[one_up.x][one_up.y].is_occupied() {
+            pawn_moves.push(standard(*pos, one_up, curr_pawn.clone(), None));
+        }
+        //moving two up
+        if first_move && !board.squares[two_up.x][two_up.y].is_occupied() {
+            pawn_moves.push(standard(*pos, two_up, curr_pawn.clone(), None));
+        }
+        //Captures
+        for potential_capture in vec![right_up, left_up] {
+            if let Some(capture) = board.squares[potential_capture.x][potential_capture.y].piece {
+                if capture.color == curr_pawn.color.opposite() {
+                    pawn_moves.push(standard(*pos, potential_capture, curr_pawn.clone(), Some(capture)));
                 }
             }
-        }, 
-        None => {}
+        }
+
+        //Bug Source
+        if let Some(en_passant) = board.en_passant {
+            if en_passant == pos.left() {
+                pawn_moves.push(enPassant(*pos, en_passant_left, en_passant, Some(Piece{piece_type: PieceType::Pawn, color: curr_pawn.color.opposite()})));
+            } else if en_passant == pos.right() {
+                pawn_moves.push(enPassant(*pos, en_passant_right, en_passant, Some(Piece{piece_type: PieceType::Pawn, color: curr_pawn.color.opposite()})));
+            }
+        }
+
+    } else {
+        for promote_to in vec![PieceType::Queen, PieceType::Rook, PieceType::Bishop, PieceType::Knight] {
+            if !board.squares[one_up.x][one_up.y].is_occupied() {
+                pawn_moves.push(promotion(*pos, one_up, Piece{piece_type: promote_to, color: curr_pawn.color}, None));
+            }
+
+            for potential_capture in vec![right_up, left_up] {
+                if let Some(capture) = board.squares[potential_capture.x][potential_capture.y].piece {
+                    if capture.color == curr_pawn.color.opposite() {
+                        pawn_moves.push(promotion(*pos, potential_capture, Piece{piece_type: promote_to, color: curr_pawn.color}, Some(capture)));
+                    }
+                }
+            }
+        }
     }
 
     pawn_moves
 }
-/* Generates moves from a given piece and related info */
-pub fn generate_moves_from_piece(board: &BoardState, move_type: MoveValue, curr_piece: Piece, curr_piece_position: Position, possible_positions: Vec<Position>, castle_bool: Option<bool>) -> Vec<Move> {
-    let mut generated_moves: Vec<Move> = Vec::new();
-    let is_stoppable: bool = 
-        (curr_piece.piece_type == PieceType::Rook) || 
-        (curr_piece.piece_type == PieceType::Bishop) || 
-        (curr_piece.piece_type == PieceType::Queen);
-    
-        for position in possible_positions {
-            if !position.is_valid_position() {
-                continue;
-            }
 
-            match move_type {
-                MoveValue::StandardMove => {
-                    match board.squares[position.x][position.y].piece {
-                        Some(val) => {
-                            if val.color == board.active_color.opposite() {
-                                generated_moves.push(standard(curr_piece_position.clone(), position, curr_piece.clone(), Some(val)))
-                            }
-                            if is_stoppable {
-                                continue; //Break?
-                            }
-                        },
-                        None => {
-                            generated_moves.push(standard(curr_piece_position.clone(), position, curr_piece.clone(), None))
-                        }
-                    }
-                },
-                MoveValue::CastleMove => {
-                    generated_moves.push(castle(castle_bool.unwrap()));
-                },
-                MoveValue::PromotionMove => {
-                    match board.squares[position.x][position.y].piece {
-                        Some(val) => {
-                            if val.color == board.active_color.opposite() {
-                                generated_moves.push(promotion(curr_piece_position.clone(), position.clone(), 
-                                Piece{piece_type: PieceType::Queen, color: board.active_color}, Some(val)));
-                            }
-                        },
-                        None => {
-                            generated_moves.push(promotion(curr_piece_position.clone(), position.clone(), 
-                            Piece{piece_type: PieceType::Queen, color: board.active_color}, None));
-                        }
-                    }
-                },
-                MoveValue::EnPassantMove => {
-                    generated_moves.push(enPassant(curr_piece_position.clone(), position.clone(), board.en_passant.unwrap(),
-                    Some(Piece{piece_type :PieceType::Pawn, color: board.active_color.opposite()})));
-                }
-            }
-    }
-
-    generated_moves
-}
-/* Generate pawn moves for a given square/color */
+/* Generate pawn move positions for a given square/color */
 pub fn generate_pawn_moves_helper(pos: &Position, color: &Color) -> 
 (
-    Position,Position,Position, Position,Position,Position,
+    Position,Position,Position,Position,Position,Position
 ) {
-    let right: Position;
-    let left: Position;
+    let right_up: Position;
+    let left_up: Position;
     let oneup: Position;
     let twoup: Position;
     let en_passant_left: Position;
     let en_passant_right: Position; 
-    /* Are we on the first pawn move? are we on a promotion? */
-    /*
-    let first_move: bool;
-    let is_promotion: bool; 
-    */
 
     /* Going forwards or backwards depending on piece color */ 
     match color {
         Color::White => {
-            right = Position {x: pos.x - 1, y: pos.y + 1};
-            left = Position {x: pos.x - 1, y: pos.y - 1};
-            oneup = Position {x: pos.x - 1, y: pos.y};
-            twoup =  Position {x: pos.x - 2, y: pos.y};
-            en_passant_left = Position {x: pos.x - 1, y: pos.y + 1};
-            en_passant_right= Position {x: pos.x - 1, y: pos.y - 1};
-            //Figure these out
-            //first_move = pos.x == 7;
-            //is_promotion = pos.x == 2;
+            right_up = pos.up().right();
+            left_up = pos.up().left();
+            oneup = pos.up();
+            twoup = pos.up().up();
+            en_passant_left = pos.up().left();
+            en_passant_right = pos.up().right();
         },
         Color::Black => {
-            right = Position {x: pos.x - 1, y: pos.y + 1};
-            left = Position {x: pos.x - 1, y: pos.y - 1};
-            oneup = Position {x: pos.x + 1, y: pos.y};
-            twoup =  Position {x: pos.x + 2, y: pos.y};
-            en_passant_left = Position {x: pos.x + 1, y: pos.y + 1};
-            en_passant_right= Position {x: pos.x + 1, y: pos.y - 1};
-            //Figure these out
-            //first_move = pos.x == 2;
-            //is_promotion = pos.x - 1 == 7;
+            right_up = pos.down().right();
+            left_up = pos.down().left();
+            oneup = pos.down();
+            twoup = pos.down().down();
+            en_passant_left = pos.down().left();
+            en_passant_right = pos.down().right();
         }
     }
 
-    (right, left, oneup, twoup, en_passant_left, en_passant_right)
+    (right_up, left_up, oneup, twoup, en_passant_left, en_passant_right)
 }
 
 /* Generates two bools to record whether a pawn move is the first move by that pawn or if it is a promotion move */
@@ -308,193 +357,33 @@ pub fn generate_pawn_permissions(pos: &Position, color: &Color) -> (bool, bool) 
         }
         Color::Black => {
             first_move = pos.x == 2;
-            is_promotion = pos.x == 7; //POSSIBLE BUG SOURCE
+            is_promotion = pos.x == 7; 
         }
     }
-
     (first_move, is_promotion)
 }
-/* Generates possible king_moves given a square */
-pub fn generate_king_moves_helper(board: &BoardState, pos: &Position) -> Vec<Position> {
-    vec![
-        Position{x: pos.x - 1, y: pos.y - 1},
-        Position{x: pos.x - 1, y: pos.y},
-        Position{x: pos.x - 1, y: pos.y + 1},
-        Position{x: pos.x, y: pos.y - 1},
-        Position{x: pos.x, y: pos.y + 1},
-        Position{x: pos.x + 1, y: pos.y - 1},
-        Position{x: pos.x + 1, y: pos.y},
-        Position{x: pos.x + 1, y: pos.y + 1},
-    ].into_iter()
-    .filter(|pos| pos.is_valid_position())
-    .collect()
-}
-/* Given a position, this function generates a set of positions for that knight */
-pub fn generate_knight_moves_helper(pos: &Position) -> Vec<Position> {
-    let mut possible_knight_positions: Vec<Position> = Vec::new();
-    for u in 0..3 {
-        for v in 0..3 {
-            if u != v && u != 0 && v != 0 {
-                possible_knight_positions.push(Position{x: pos.x + u, y: pos.y + v});
-                if pos.x >= u && pos.y >= v {
-                    possible_knight_positions.push(Position{x: pos.x - u, y:  pos.y - v});
-                    possible_knight_positions.push(Position{x: pos.x - u, y: pos.y + v});
-                    possible_knight_positions.push(Position{x: pos.x + u, y: pos.y - v});
-                } else if pos.x >= u && pos.y < v {
-                    possible_knight_positions.push(Position{x: pos.x - u, y: pos.y + v});
-                } else if pos.x < u && pos.y >= v {
-                    possible_knight_positions.push(Position{x: pos.x + u,y:  pos.y - v});
-                }
-            }
+
+/* Moves continually in a specified direction and stops when it either reaches the end of the board or hits another piece */
+pub fn move_in_direction(pos: Position, dir: &Direction, piece: Piece, board: &BoardState) -> Vec<Move> {
+    assert!(piece.piece_type == PieceType::Rook ||
+            piece.piece_type == PieceType::Bishop ||
+            piece.piece_type == PieceType::Queen
+    );
+
+    let mut valid_moves: Vec<Move> = Vec::new();
+    let mut next_pos = pos.next_position(dir);
+
+    while !board.squares[next_pos.x][next_pos.y].is_occupied() && next_pos.is_valid_position() {
+        valid_moves.push(standard(pos, next_pos, piece, None));
+        next_pos = next_pos.next_position(dir);
+    }
+
+    if let Some(piece_captured) = board.squares[next_pos.x][next_pos.y].piece {
+        if piece_captured.color == piece.color.opposite() {
+            valid_moves.push(standard(pos, next_pos, piece, Some(piece_captured)));
         }
     }
 
-    possible_knight_positions
-    .into_iter()
-    .filter(|pos| pos.is_valid_position())
-    .collect()
+    valid_moves
 }
 
-/* Given a position on the board and a color, this function generates a set of squares
-a rook of that color placed on that position could move to */
-pub fn generate_rook_moves_helper(board: &BoardState, pos: &Position, color: Color) -> Vec<Position> {
-    let mut rook_positions: Vec<Position> = Vec::new();
-    let mut curr_pos: Position; 
-    /*Looking horizontally */
-    for index in 1..8 {
-        curr_pos = Position{x: pos.x, y: pos.y + index};
-        if !curr_pos.is_valid_position() {
-            break;
-        }
-
-        if board.squares[curr_pos.x][curr_pos.y].is_occupied() {
-            if board.squares[curr_pos.x][curr_pos.y].piece.unwrap().color == color.opposite() {
-                rook_positions.push(curr_pos);
-            }
-            break;
-        } else {
-            rook_positions.push(curr_pos);
-        }
-    }
-
-    for index in 1..8 {
-        curr_pos = Position{x: pos.x, y: pos.y - index};
-        if !curr_pos.is_valid_position() {
-            break;
-        }
-
-        if board.squares[curr_pos.x][curr_pos.y].is_occupied() {
-            if board.squares[curr_pos.x][curr_pos.y].piece.unwrap().color == color.opposite() {
-                rook_positions.push(curr_pos);
-            }
-            break;
-        } else {
-            rook_positions.push(curr_pos);
-        }
-    }
-    /* Looking vertically */
-    for index in 1..8 {
-        curr_pos = Position{x: pos.x + index, y: pos.y};
-        if !curr_pos.is_valid_position() {
-            break;
-        }
-
-        if board.squares[curr_pos.x][curr_pos.y].is_occupied() {
-            if board.squares[curr_pos.x][curr_pos.y].piece.unwrap().color == color.opposite() {
-                rook_positions.push(curr_pos);
-            }
-            break;
-        } else {
-            rook_positions.push(curr_pos);
-        }
-    }
-    for index in 1..8 {
-        curr_pos = Position{x: pos.x - index, y: pos.y};
-        if !curr_pos.is_valid_position() {
-            break;
-        }
-
-        if board.squares[curr_pos.x][curr_pos.y].is_occupied() {
-            if board.squares[curr_pos.x][curr_pos.y].piece.unwrap().color == color.opposite() {
-                rook_positions.push(curr_pos);
-            }
-            break;
-        } else {
-            rook_positions.push(curr_pos);
-        }
-    }
-    return rook_positions;
-}
-
-/* Given a position on the board and a color, this fucntion generates a set of squares
-a bishop of that color placed on that position could move to */
-pub fn generate_bishop_moves_helper(board: &BoardState, pos: &Position, color: Color) -> Vec<Position> {
-    let mut bishop_positions: Vec<Position> = Vec::new();
-    let mut curr_pos: Position; 
-    /* each for loop corresponds to a diagonal */
-    for index in 1..8 {
-        curr_pos = Position{x: pos.x + index, y: pos.y + index};
-        if !curr_pos.is_valid_position() {
-            break;
-        }
-
-        if board.squares[curr_pos.x][curr_pos.y].is_occupied() {
-            if board.squares[curr_pos.x][curr_pos.y].piece.unwrap().color == color.opposite() {
-                bishop_positions.push(curr_pos);
-            }
-            break;
-        } else {
-            bishop_positions.push(curr_pos);
-        }
-    }
-
-    for index in 1..8 {
-        curr_pos = Position{x: pos.x + index, y: pos.y - index};
-        if !curr_pos.is_valid_position() {
-            break;
-        }
-
-        if board.squares[curr_pos.x][curr_pos.y].is_occupied() {
-            if board.squares[curr_pos.x][curr_pos.y].piece.unwrap().color == color.opposite() {
-                bishop_positions.push(curr_pos);
-            }
-            break;
-        } else {
-            bishop_positions.push(curr_pos);
-        }
-    }
-
-    for index in 1..8 {
-        curr_pos = Position{x: pos.x - index, y: pos.y + index};
-        if !curr_pos.is_valid_position() {
-            break;
-        }
-
-        if board.squares[curr_pos.x][curr_pos.y].is_occupied() {
-            if board.squares[curr_pos.x][curr_pos.y].piece.unwrap().color == color.opposite() {
-                bishop_positions.push(curr_pos);
-            }
-            break;
-        } else {
-            bishop_positions.push(curr_pos);
-        }
-    }
-
-    for index in 1..8 {
-        curr_pos = Position{x: pos.x - index, y: pos.y - index};
-        if !curr_pos.is_valid_position() {
-            break;
-        }
-
-        if board.squares[curr_pos.x][curr_pos.y].is_occupied() {
-            if board.squares[curr_pos.x][curr_pos.y].piece.unwrap().color == color.opposite() {
-                bishop_positions.push(curr_pos);
-            }
-            break;
-        } else {
-            bishop_positions.push(curr_pos);
-        }
-    }
-
-    return bishop_positions;
-}
