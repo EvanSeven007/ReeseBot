@@ -26,7 +26,7 @@ impl Position {
     }
 
     pub fn is_valid_position(&self) -> bool {
-        self.x >= 1 && self.x <= 8 && self.y >= 1 && self.y <= 8
+        self.x >= 2 && self.x <= 9 && self.y >= 2 && self.y <= 9
     }
 
     pub fn right(&self) -> Position {

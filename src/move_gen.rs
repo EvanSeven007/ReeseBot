@@ -151,13 +151,13 @@ pub fn find_pieces(board: &BoardState, color: Color) -> (HashSet<Position>, Posi
     let mut curr_pieces: HashSet<Position> = HashSet::new();
     let mut opt_king_pos: Option<Position> = None;
         
-    for x in 1..9 {
-        for y in 1..9 {
+    for x in 2..10 {
+        for y in 2..10 {
             if let Some(curr_piece) = board.squares[x][y].piece {
                 if curr_piece.color == color {
                     curr_pieces.insert(Position{x, y});
                     if curr_piece.piece_type == PieceType::King {
-                        opt_king_pos = Some(Positiong{x, y});
+                        opt_king_pos = Some(Position{x, y});
                     }
                 }
             }

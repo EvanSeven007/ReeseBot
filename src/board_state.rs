@@ -15,7 +15,7 @@ pub struct CastleRights {
 /* A board is a 8x8 array of squares */
 #[derive(Clone, Copy)]
 pub struct BoardState {
-    pub squares: [[Square; 10]; 10],
+    pub squares: [[Square; 12]; 12],
     pub active_color: Color, 
     pub castle_rights: CastleRights,
     pub en_passant: Option<Position>,
@@ -25,9 +25,9 @@ impl BoardState {
     /* Creates a board state from a FEN string */
     pub fn new(fen: &str) -> Result<BoardState, &str> {
         //Creating an 10x10 array of uninitialized arrays
-        let mut squares = [[Square {piece: None, color: (Color::White) }; 10]; 10]; //Setting to white and then updating later
+        let mut squares = [[Square {piece: None, color: (Color::White) }; 12]; 12]; //Setting to white and then updating later
         //Assigning colors, but not charged
-        for index in 1..9 {
+        for index in 2..10 {
             for inner_index in 1..9 {
                 squares[index][inner_index].color = BoardState::get_color(&index, &inner_index);
             }
@@ -46,12 +46,12 @@ impl BoardState {
         
         for row in 0..8 {
             row_string = position_str[row];
-            col = 1;
+            col = 2;
             for fen_entry in row_string.chars() {
                 if fen_entry.is_digit(10) {
                     col += fen_entry.to_digit(10).unwrap() as usize;
                 } else {
-                    squares[row + 1][col].piece = BoardState::parse_fen_entry(&fen_entry).unwrap();
+                    squares[row + 2][col].piece = BoardState::parse_fen_entry(&fen_entry).unwrap();
                     col += 1;
                 }
             }
@@ -145,7 +145,7 @@ impl BoardState {
 
     /* Gets the color of a board from its coordinates */
     fn get_color(val1: &usize, val2: &usize) -> Color {
-        if (val1 > &8 || val2 > &8) {
+        if (val1 > &9 || val2 > &9) {
             panic!("Not a valid coordinate {} {}", val1, val2);
         }
 
@@ -401,9 +401,9 @@ impl BoardState {
     }
 
     pub fn print_board(&self) {
-        for index in 1..9 {
+        for index in 2..10 {
             print!("[{}]", index);
-            for inner_index in 1..9 {
+            for inner_index in 2..10 {
                 print!("{}", self.squares[index][inner_index].symbol());
             }
             print!("\n");
