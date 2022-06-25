@@ -126,17 +126,15 @@ pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
     //Find the king in every call to, fix this with a do, undo move pattern
     let mut legal_moves: Vec<Move> = Vec::new();
     for mv in move_set {
-        let mut board_copy: BoardState = *board;
-        board_copy.make_move(&mv);
-        board_copy.active_color = board_copy.active_color.opposite(); //Bug here lol
-        //Why does this work?
+        let mut board_copy: BoardState = board.clone();
+        board_copy.make_move(&mv); //Bug here lol
         if !board_copy.is_in_check() {
             legal_moves.push(mv);
         }
     }
 
     if legal_moves.len() == 0 {
-        if board.is_in_check(){
+        if !board.is_in_check(){
             println!("GAME OVER BY CHECKMATE: {} has defeated {}", board.active_color.opposite().color_to_string(), board.active_color.color_to_string());
         } else {
             println!("Game over by Stalemate!");

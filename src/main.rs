@@ -10,7 +10,7 @@ use rand::seq::SliceRandom;
 use std::io;
 
 fn main() {
-    let board_state_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 3 25"; //Still recognizing as Kinside castle
+    let board_state_fen = "rnbqkbnr/pppppppp/8/8/8/8/QQQQQQQQ/QQQQKQQQ w KQkq - 3 25"; 
     let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
     let mut board: BoardState;
 
@@ -18,9 +18,7 @@ fn main() {
         Ok(_) => board = board_state.unwrap(),
         Err(e) => panic!("Error: {}", e),
     }
-    
-    //NONCE
-    
+
     println!("STARTING::::::");
     let mut input = String::new();
     let mut moves;
@@ -35,7 +33,6 @@ fn main() {
                 board.print_board();
             }
             _ => {
-                println!("EXITING...");
                 break;
             }
         }

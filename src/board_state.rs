@@ -24,7 +24,8 @@ pub struct BoardState {
 impl BoardState { 
     /* Creates a board state from a FEN string */
     pub fn new(fen: &str) -> Result<BoardState, &str> {
-        //Creating an 10x10 array of uninitialized arrays
+        //Creating an 12x12 array of uninitialized arrays
+        //The chess board will sit in the center, with two squares of "boundary" around them. This is so we don't have to deal with out of array errors later on
         let mut squares = [[Square {piece: None, color: (Color::White) }; 12]; 12]; //Setting to white and then updating later
         //Assigning colors, but not charged
         for index in 2..10 {
@@ -263,23 +264,16 @@ impl BoardState {
         Returns True if the king of active color is in check, false otherwise
     */
     pub fn is_in_check(self: BoardState) -> bool {
-        false //Need refactor
-        
-        /* 
-        * Looking for check on the diagonals 
-        */
-        //Checking pawn moves
-        /*
-        let board = self;
-        let mut king_pos_opt: Option<Position> = None;
+        //White makes move -> black is active color, check if whtie is in check
+        //Finding the king
         let king_pos: Position;
-        for i in 1..9 {
-            for j in 1..9 {
-                if board.squares[i][j].is_occupied() {
-                    let p = board.squares[i][j].piece.unwrap();
-                    if p.piece_type == PieceType::King && p.color == board.active_color {
-                        king_pos_opt= Some(Position{x: i, y: j});
-                        break;
+        let mut king_pos_opt: Option<Position> = None;
+
+        for x in 2..10 {
+            for y in 2..10 {
+                if let Some(piece) = self.squares[x][y].piece {
+                    if piece.piece_type == PieceType::King && piece.color == self.active_color.opposite() {
+                        king_pos_opt = Some(Position{x, y});
                     }
                 }
             }
@@ -287,117 +281,79 @@ impl BoardState {
 
         king_pos = king_pos_opt.expect("Could not find the king!");
 
-        let pawn_square_right: Position;
-        let pawn_square_left: Position;
-        match board.active_color {
+        //Checking by rook/Queen
+        let mut next_pos = king_pos.clone();
+        for dir in [Direction::Up, Direction::Down, Direction::Left, Direction::Right] {
+            while next_pos.next_position(&dir).is_valid_position() {
+                next_pos = next_pos.next_position(&dir);
+                if let Some(piece) = self.squares[next_pos.x][next_pos.y].piece {
+                    if piece.color == self.active_color && (piece.piece_type == PieceType::Rook || piece.piece_type == PieceType::Queen) {
+                        return true;
+                    }
+                    break;
+                }
+            }
+            next_pos = king_pos.clone();
+        }
+
+
+        //Checking by bishop/Queen
+        let mut next_pos = king_pos.clone();
+        for dir in [Direction::UpRight, Direction::DownRight, Direction::UpLeft, Direction::DownLeft] {
+            while next_pos.next_position(&dir).is_valid_position() {
+                next_pos = next_pos.next_position(&dir);
+                if let Some(piece) = self.squares[next_pos.x][next_pos.y].piece{
+                    if piece.color == self.active_color && (piece.piece_type == PieceType::Bishop || piece.piece_type == PieceType::Queen) {
+                        return true;
+                    }
+                    break;   
+                }
+            }
+            next_pos = king_pos.clone();
+        }
+
+        //Checking for pawn 
+        let square_right;
+        let square_left;
+        match self.active_color.opposite() {
             Color::White => {
-                pawn_square_right = Position{x: king_pos.x - 1 , y: king_pos.y - 1};
-                pawn_square_left = Position{x: king_pos.x - 1 , y: king_pos.y + 1};
+                square_right = self.squares[king_pos.up().right().x][king_pos.up().right().y];
+                square_left = self.squares[king_pos.up().left().x][king_pos.up().left().y];
             },
             Color::Black => {
-                pawn_square_right = Position{x: king_pos.x + 1 , y: king_pos.y - 1};
-                pawn_square_left = Position{x: king_pos.x + 1 , y: king_pos.y + 1};
-            },
+                square_right = self.squares[king_pos.down().right().x][king_pos.up().right().y];
+                square_left = self.squares[king_pos.down().left().x][king_pos.down().left().y];
+            }
         }
-        
-        /* Checking for checks by pawns */
-        if pawn_square_right.is_valid_position() {
-            if board.squares[pawn_square_right.x][pawn_square_right.y].is_occupied() {
-                let p = board.squares[pawn_square_right.x][pawn_square_right.y].piece.unwrap();
-                if p.piece_type == PieceType::Pawn && p.color != board.active_color {
-                    println!("In check by pawn");
+        for square in vec![square_right, square_left] {
+            if let Some(piece) = square.piece {
+                if piece.piece_type == PieceType::Pawn && piece.color == self.active_color {
                     return true;
                 }
             }
         }
 
-        if pawn_square_left.is_valid_position() {
-            if board.squares[pawn_square_left.x][pawn_square_left.y].is_occupied() {
-                let p = board.squares[pawn_square_left.x][pawn_square_left.y].piece.unwrap();
-                if p.piece_type == PieceType::Pawn && p.color != board.active_color {
-                    println!("in check by pawn");
+        //Checking for knight
+        let mut possible_knight_positions: Vec<Position> = vec![
+            king_pos.up().up().right(),
+            king_pos.up().up().left(),
+            king_pos.down().down().right(),
+            king_pos.down().down().left(),
+            king_pos.left().left().up(),
+            king_pos.left().left().down(),
+            king_pos.right().right().up(),
+            king_pos.right().right().down(),
+        ];
+
+        for pos in possible_knight_positions {
+            if let Some(piece) = self.squares[pos.x][pos.y].piece {
+                if piece.piece_type == PieceType::Knight && piece.color == self.active_color {
                     return true;
                 }
             }
         }
 
-        /* Checking rank checks */
-        let mut candidates = generate_rook_moves_helper(&board, &king_pos, board.active_color);
-        for mv in candidates {
-            if board.squares[mv.x][mv.y].is_occupied() {
-                let p = board.squares[mv.x][mv.y].piece.unwrap();
-                if p.color != board.active_color {
-                    match p.piece_type {
-                        PieceType::Rook => {
-                            println!("In check by rook");
-                            return true
-                        },
-                        PieceType::Queen => {
-                            println!("In check by queen");
-                            return true
-                        },
-                        _ => {},
-                    }
-                }
-            }
-        }
-
-        /* Checking check by diagonals */
-        candidates = generate_bishop_moves_helper(&board, &king_pos, board.active_color);
-        for mv in candidates {
-            if board.squares[mv.x][mv.y].is_occupied() {
-                let p = board.squares[mv.x][mv.y].piece.unwrap();
-                if p.color != board.active_color {
-                    match p.piece_type {
-                        PieceType::Bishop => {
-                            println!("In check by bishop");
-                            return true
-                        },
-                        PieceType::Queen => {
-                            println!("In check by queen");
-                            return true
-                        },
-                        _ => {},
-                    }
-                }
-            }
-        }
-
-        /* Looking for checks by knight */
-        candidates =  generate_knight_moves_helper(&king_pos);
-        for mv in candidates {
-            if !mv.is_valid_position() {
-                continue;
-            }
-            if board.squares[mv.x][mv.y].is_occupied() {
-                let p = board.squares[mv.x][mv.y].piece.unwrap();
-                if p.piece_type == PieceType::Knight && p.color != board.active_color {
-                    println!("In check by knight");
-                    return true;
-                }
-            }
-        }
-
-        /* Looking for checks by king */
-        candidates = generate_king_moves_helper(&board, &king_pos);
-
-        for mv in candidates {
-            if !mv.is_valid_position() {
-                continue;
-            }
-
-            if board.squares[mv.x][mv.y].is_occupied() {
-                let p = board.squares[mv.x][mv.y].piece.unwrap();
-                if p.piece_type == PieceType::King && p.color != board.active_color {
-                    println!("In check by King");
-                    return true;
-                }
-            }
-        }
-
-
-        return false;
-        */
+        false
     }
 
     pub fn print_board(&self) {
