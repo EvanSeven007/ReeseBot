@@ -24,7 +24,7 @@ pub struct BoardState {
 impl BoardState { 
     /* Creates a board state from a FEN string */
     pub fn new(fen: &str) -> Result<BoardState, &str> {
-        //Creating an 8x8 array of uninitialized arrays
+        //Creating an 10x10 array of uninitialized arrays
         let mut squares = [[Square {piece: None, color: (Color::White) }; 10]; 10]; //Setting to white and then updating later
         //Assigning colors, but not charged
         for index in 1..9 {
@@ -171,6 +171,49 @@ impl BoardState {
                 if val.piece_moved.piece_type == PieceType::Pawn && abs(val.after.x as i8 - val.before.x as i8) == 2 {
                     self.en_passant = Some(val.after);
                 }
+                match val.piece_moved.piece_type {
+                    //Setting enPassant
+                    PieceType::Pawn => {
+                        if abs(val.after.x as i8 - val.before.x as i8) == 2 {
+                            self.en_passant = Some(val.after);
+                        }
+                    }, 
+                    //removing Castling Rights
+                    PieceType::King => {
+                        match val.piece_moved.color {
+                            Color::White => {
+                                self.castle_rights.can_castle_white_kingside = false;
+                                self.castle_rights.can_castle_white_queenside = false;
+                            }, 
+                            Color::Black => {
+                                self.castle_rights.can_castle_black_kingside = false;
+                                self.castle_rights.can_castle_black_queenside = false;
+                            }
+                        }
+                    },
+                    //removing castling rights
+                    PieceType::Rook => {
+                        match val.piece_moved.color {
+                            Color::White => {
+                                //Were the rooks on default positions?
+                                match val.before {
+                                    Position{x: 8, y: 1} => self.castle_rights.can_castle_white_queenside = false,
+                                    Position{x: 8, y: 8} => self.castle_rights.can_castle_white_kingside = false,
+                                    _ => {}
+                                }
+                            }, 
+                            Color::Black => {
+                                match val.before {
+                                    //Were the rooks on default positions?
+                                    Position{x: 1, y: 1} => self.castle_rights.can_castle_black_queenside = false,
+                                    Position{x: 1, y: 8} => self.castle_rights.can_castle_black_kingside = false,
+                                    _ => {}
+                                }
+                            }
+                        }
+                    },
+                    _ => {}
+                }
             },
 
             MoveType::castle(val) => {
@@ -181,7 +224,17 @@ impl BoardState {
                 else {
                     y_positions = vec![5,1,3,4];
                 }
-
+                //Set castling rights here
+                match val.color {
+                    Color::White => {
+                        self.castle_rights.can_castle_white_kingside = false;
+                        self.castle_rights.can_castle_white_queenside = false;
+                    }
+                    Color::Black => {
+                        self.castle_rights.can_castle_black_kingside = false;
+                        self.castle_rights.can_castle_black_queenside = false;
+                    }
+                }
                 self.squares[8][y_positions[0]].piece = None;
                 self.squares[8][y_positions[1]].piece = None;
                 self.squares[8][y_positions[2]].piece = Some(Piece {piece_type: PieceType::King, color: self.active_color });

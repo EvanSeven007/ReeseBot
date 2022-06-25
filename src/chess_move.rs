@@ -1,5 +1,6 @@
 use crate::piece::{Piece};
 use crate::board_state::{BoardState};
+use crate::color::{Color};
 /* Position in on a board */ 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub struct Position {
@@ -100,6 +101,7 @@ pub struct StandardMove { //enpassant is in this?
 /* Castles are either king or queenside */
 pub struct CastleMove {
     pub is_kingside: bool, //Else queenside
+    pub color: Color, 
 }
 
 /* Promoting a pawn */
@@ -131,8 +133,8 @@ pub fn standard(before: Position, after: Position, piece_moved: Piece, piece_cap
     }
 }
 
-pub fn castle(is_kingside: bool) -> Move {
-    let move_type: MoveType = MoveType::castle(CastleMove{is_kingside});
+pub fn castle(is_kingside: bool, color: Color) -> Move {
+    let move_type: MoveType = MoveType::castle(CastleMove{is_kingside, color});
 
     Move {
         move_type,

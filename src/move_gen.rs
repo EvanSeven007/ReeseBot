@@ -7,45 +7,12 @@ use std::process::exit;
 
 pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
     /* Storing the positions of the white and black pieces */
-    let mut white_pieces_pos: HashSet<Position> = HashSet::new();
-    let mut black_pieces_pos: HashSet<Position> = HashSet::new();
-    let mut opt_king_pos: Option<Position> = None;
-    
-    //TODO Make this a function
-    for x in 1..9 {
-        for y in 1..9 {
-            let curr_piece: Option<Piece> = board.squares[x][y].piece;
-            match curr_piece {
-                Some(val) => {
-                    match val.color {
-                        Color::White => {white_pieces_pos.insert(Position { x, y });},
-                        Color::Black => {black_pieces_pos.insert(Position { x, y });},
-                    }
-
-                    //Found the king 
-                    if val.piece_type == PieceType::King && val.color == board.active_color {
-                        opt_king_pos = Some(Position{ x, y });
-                    }
-                },
-                None => {},
-            }
-        }
-    }
-
-    let king_pos: Position = opt_king_pos.expect("Could not find the king!");
-    
-    /* Current set is the one we are on */
-    let curr_set: HashSet<Position>;
-    match board.active_color {
-        Color::White => {curr_set = white_pieces_pos},
-        Color::Black => {curr_set = black_pieces_pos},
-    }
+    let (curr_set, king_pos) = find_pieces(board, board.active_color);
 
     let mut move_set: Vec<Move> = Vec::new(); /* change this to a set later */
     
     let mut curr_piece: Piece;
-    let mut before: Position;
-    let mut after: Position; 
+
     for pos in &curr_set {
         curr_piece = board.squares[pos.x][pos.y].piece.unwrap(); //Guarantted to not be None
         
@@ -179,6 +146,29 @@ pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
     legal_moves
 }
 
+pub fn find_pieces(board: &BoardState, color: Color) -> (HashSet<Position>, Position){
+    /* Storing the positions of the white and black pieces */
+    let mut curr_pieces: HashSet<Position> = HashSet::new();
+    let mut opt_king_pos: Option<Position> = None;
+        
+    for x in 1..9 {
+        for y in 1..9 {
+            if let Some(curr_piece) = board.squares[x][y].piece {
+                if curr_piece.color == color {
+                    curr_pieces.insert(Position{x, y});
+                    if curr_piece.piece_type == PieceType::King {
+                        opt_king_pos = Some(Positiong{x, y});
+                    }
+                }
+            }
+        }
+    }
+    let king_pos: Position = opt_king_pos.expect("Could not find the king!");
+
+    (curr_pieces, king_pos)
+
+}
+
 pub fn generate_castle_moves(king_pos: &Position, castle_rights: &CastleRights, color: Color, board: &BoardState) -> Vec<Move> {
     let mut castle_moves: Vec<Move> = Vec::new();
     let king_side_squares;
@@ -198,7 +188,7 @@ pub fn generate_castle_moves(king_pos: &Position, castle_rights: &CastleRights, 
                     }
                 }
                 if king_side {
-                    castle_moves.push(castle(true));
+                    castle_moves.push(castle(true, color));
                 }
             }
             if castle_rights.can_castle_white_queenside {
@@ -215,7 +205,7 @@ pub fn generate_castle_moves(king_pos: &Position, castle_rights: &CastleRights, 
                 }
 
                 if queen_side {
-                    castle_moves.push(castle(true));
+                    castle_moves.push(castle(false, color));
                 }
             }
         },
@@ -231,7 +221,7 @@ pub fn generate_castle_moves(king_pos: &Position, castle_rights: &CastleRights, 
                     }
                 }
                 if king_side {
-                    castle_moves.push(castle(true));
+                    castle_moves.push(castle(true, color));
                 }
             }
             if castle_rights.can_castle_black_queenside {
@@ -248,7 +238,7 @@ pub fn generate_castle_moves(king_pos: &Position, castle_rights: &CastleRights, 
                 }
 
                 if queen_side {
-                    castle_moves.push(castle(true));
+                    castle_moves.push(castle(false, color));
                 }
             }
         }
@@ -313,7 +303,12 @@ pub fn generate_pawn_moves(board: &BoardState, curr_pawn: Piece,pos: &Position) 
 /* Generate pawn move positions for a given square/color */
 pub fn generate_pawn_moves_helper(pos: &Position, color: &Color) -> 
 (
-    Position,Position,Position,Position,Position,Position
+    Position,
+    Position,
+    Position,
+    Position,
+    Position,
+    Position
 ) {
     let right_up: Position;
     let left_up: Position;
