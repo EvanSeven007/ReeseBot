@@ -19,7 +19,7 @@ pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
     let mut curr_piece: Piece;
 
     for pos in &curr_set {
-        curr_piece = board.squares[pos.x][pos.y].piece.unwrap(); //Guarantted to not be None
+        curr_piece = board.squares[pos.row][pos.col].piece.unwrap(); //Guarantted to not be None
         
         match curr_piece.piece_type {
             PieceType::Pawn => {
@@ -39,7 +39,7 @@ pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
                 ]
                 .into_iter()
                 .filter(|val| -> bool {
-                    let square = board.squares[val.x][val.y]; 
+                    let square = board.squares[val.row][val.col]; 
                     val.is_valid_position() && ( //Must be a valid square
                         //Square isn't occupied
                         !square.is_occupied() || 
@@ -48,7 +48,7 @@ pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
                     )
                 })
                 .map(|val| -> Move {
-                        if let Some(piece_captured) = board.squares[val.x][val.y].piece {
+                        if let Some(piece_captured) = board.squares[val.row][val.col].piece {
                             standard(*pos, val, curr_piece.clone(), Some(piece_captured)) //Capture
                         } else {
                             standard(*pos, val, curr_piece.clone(), None) //No capture
@@ -75,13 +75,13 @@ pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
                 .filter(|val| -> bool {
                     val.is_valid_position() && ( //Must be a valid square
                         //Square isn't occupied
-                        !board.squares[val.x][val.y].is_occupied() || 
+                        !board.squares[val.row][val.col].is_occupied() || 
                         //Square is occupied, but we can capture it
-                        board.squares[val.x][val.y].piece.unwrap().color == board.active_color.opposite() 
+                        board.squares[val.row][val.col].piece.unwrap().color == board.active_color.opposite() 
                     )
                 })
                 .map(|val| -> Move {
-                        if let Some(piece_captured) = board.squares[val.x][val.y].piece {
+                        if let Some(piece_captured) = board.squares[val.row][val.col].piece {
                             standard(*pos, val, curr_piece.clone(), Some(piece_captured)) //Capture
                         } else {
                             standard(*pos, val, curr_piece.clone(), None) //No capture
@@ -157,12 +157,12 @@ pub fn find_pieces(board: &BoardState, color: Color) -> (HashSet<Position>, Hash
         for y in 2..10 {
             if let Some(curr_piece) = board.squares[x][y].piece {
                 if curr_piece.color == color {
-                    curr_pieces.insert(Position{x, y});
+                    curr_pieces.insert(Position{row: x, col: y});
                     if curr_piece.piece_type == PieceType::King {
-                        opt_king_pos = Some(Position{x, y});
+                        opt_king_pos = Some(Position{row: x, col: y});
                     }
                 } else {
-                    other_pieces.insert(Position{x, y});
+                    other_pieces.insert(Position{row: x, col: y});
                 }
             }
         }
@@ -183,8 +183,8 @@ pub fn generate_castle_moves(king_pos: &Position, castle_rights: &CastleRights, 
         Color::White => {
             if castle_rights.can_castle_white_kingside {
                 king_side_squares = vec![
-                    board.squares[king_pos.right().x][king_pos.right().y],
-                    board.squares[king_pos.right().right().x][king_pos.right().right().y]
+                    board.squares[king_pos.right().row][king_pos.right().col],
+                    board.squares[king_pos.right().right().row][king_pos.right().right().col]
                 ];
                 for square in &king_side_squares {
                     if square.is_occupied() {
@@ -197,9 +197,9 @@ pub fn generate_castle_moves(king_pos: &Position, castle_rights: &CastleRights, 
             }
             if castle_rights.can_castle_white_queenside {
                 queen_side_squares = vec![
-                    board.squares[king_pos.left().x][king_pos.left().y],
-                    board.squares[king_pos.left().left().x][king_pos.left().left().y],
-                    board.squares[king_pos.left().left().left().x][king_pos.left().left().left().y]
+                    board.squares[king_pos.left().row][king_pos.left().col],
+                    board.squares[king_pos.left().left().row][king_pos.left().left().col],
+                    board.squares[king_pos.left().left().left().row][king_pos.left().left().left().col]
                 ];
 
                 for square in &queen_side_squares {
@@ -216,8 +216,8 @@ pub fn generate_castle_moves(king_pos: &Position, castle_rights: &CastleRights, 
         Color::Black => {
             if castle_rights.can_castle_black_kingside {
                 king_side_squares = vec![
-                    board.squares[king_pos.left().x][king_pos.left().y],
-                    board.squares[king_pos.left().left().x][king_pos.left().left().y]
+                    board.squares[king_pos.left().row][king_pos.left().col],
+                    board.squares[king_pos.left().left().row][king_pos.left().left().col]
                 ];
                 for square in &king_side_squares {
                     if square.is_occupied() {
@@ -230,9 +230,9 @@ pub fn generate_castle_moves(king_pos: &Position, castle_rights: &CastleRights, 
             }
             if castle_rights.can_castle_black_queenside {
                 queen_side_squares = vec![
-                    board.squares[king_pos.right().x][king_pos.right().y],
-                    board.squares[king_pos.right().right().x][king_pos.right().right().y],
-                    board.squares[king_pos.right().right().right().x][king_pos.right().right().right().y]
+                    board.squares[king_pos.right().row][king_pos.right().col],
+                    board.squares[king_pos.right().right().row][king_pos.right().right().col],
+                    board.squares[king_pos.right().right().right().row][king_pos.right().right().right().col]
                 ];
 
                 for square in &queen_side_squares {
@@ -260,16 +260,16 @@ pub fn generate_pawn_moves(board: &BoardState, curr_pawn: Piece,pos: &Position) 
     //Not a promotion
     if !is_promotion {
         //moving one up
-        if !board.squares[one_up.x][one_up.y].is_occupied() {
+        if !board.squares[one_up.row][one_up.col].is_occupied() {
             pawn_moves.push(standard(*pos, one_up, curr_pawn.clone(), None));
         }
         //moving two up
-        if first_move && !board.squares[two_up.x][two_up.y].is_occupied() {
+        if first_move && !board.squares[two_up.row][two_up.col].is_occupied() {
             pawn_moves.push(standard(*pos, two_up, curr_pawn.clone(), None));
         }
         //Captures
         for potential_capture in vec![right_up, left_up] {
-            if let Some(capture) = board.squares[potential_capture.x][potential_capture.y].piece {
+            if let Some(capture) = board.squares[potential_capture.row][potential_capture.col].piece {
                 if capture.color == curr_pawn.color.opposite() {
                     pawn_moves.push(standard(*pos, potential_capture, curr_pawn.clone(), Some(capture)));
                 }
@@ -287,12 +287,12 @@ pub fn generate_pawn_moves(board: &BoardState, curr_pawn: Piece,pos: &Position) 
 
     } else {
         for promote_to in vec![PieceType::Queen, PieceType::Rook, PieceType::Bishop, PieceType::Knight] {
-            if !board.squares[one_up.x][one_up.y].is_occupied() {
+            if !board.squares[one_up.row][one_up.col].is_occupied() {
                 pawn_moves.push(promotion(*pos, one_up, Piece{piece_type: promote_to, color: curr_pawn.color}, None));
             }
 
             for potential_capture in vec![right_up, left_up] {
-                if let Some(capture) = board.squares[potential_capture.x][potential_capture.y].piece {
+                if let Some(capture) = board.squares[potential_capture.row][potential_capture.col].piece {
                     if capture.color == curr_pawn.color.opposite() {
                         pawn_moves.push(promotion(*pos, potential_capture, Piece{piece_type: promote_to, color: curr_pawn.color}, Some(capture)));
                     }
@@ -351,12 +351,12 @@ pub fn generate_pawn_permissions(pos: &Position, color: &Color) -> (bool, bool) 
 
     match color {
         Color::White => {
-            first_move = pos.x == 7;
-            is_promotion = pos.x == 2;
+            first_move = pos.row == 7;
+            is_promotion = pos.row == 2;
         }
         Color::Black => {
-            first_move = pos.x == 2;
-            is_promotion = pos.x == 7; 
+            first_move = pos.row == 2;
+            is_promotion = pos.row == 7; 
         }
     }
     (first_move, is_promotion)
@@ -372,12 +372,12 @@ pub fn move_in_direction(pos: Position, dir: &Direction, piece: Piece, board: &B
     let mut valid_moves: Vec<Move> = Vec::new();
     let mut next_pos = pos.next_position(dir);
 
-    while !board.squares[next_pos.x][next_pos.y].is_occupied() && next_pos.is_valid_position() {
+    while !board.squares[next_pos.row][next_pos.col].is_occupied() && next_pos.is_valid_position() {
         valid_moves.push(standard(pos, next_pos, piece, None));
         next_pos = next_pos.next_position(dir);
     }
 
-    if let Some(piece_captured) = board.squares[next_pos.x][next_pos.y].piece {
+    if let Some(piece_captured) = board.squares[next_pos.row][next_pos.col].piece {
         if piece_captured.color == piece.color.opposite() {
             valid_moves.push(standard(pos, next_pos, piece, Some(piece_captured)));
         }

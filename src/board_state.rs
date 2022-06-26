@@ -111,10 +111,10 @@ impl BoardState {
                 .to_digit(10)
                 .unwrap_or_else(|| panic!("fen string enpassant malformed!"))) as usize;
 
-            if !(1..9).contains(&y) {
+            if !(1..=8).contains(&y) {
                 return Err("fen string enpassant malformed!")
             }
-            en_passant = Some(Position{ x , y }.swap()); //Accounting for how we index array
+            en_passant = Some(Position{ row: x, col: y }.swap()); //Accounting for how we index array
         
         } else {
             return Err("fen string enpassant malformed!")
@@ -165,16 +165,16 @@ impl BoardState {
         self.en_passant = None; //Reseting en_passant square to None after every move, this will be updated later depending on move
         match move_type {
             MoveType::Standard(val) => {
-                self.squares[val.before.x][val.before.y].piece = None;
-                self.squares[val.after.x][val.after.y].piece = Some(val.piece_moved);
+                self.squares[val.before.row][val.before.col].piece = None;
+                self.squares[val.after.row][val.after.col].piece = Some(val.piece_moved);
                 //Setting enpassant 
-                if val.piece_moved.piece_type == PieceType::Pawn && abs(val.after.x as i8 - val.before.x as i8) == 2 {
+                if val.piece_moved.piece_type == PieceType::Pawn && abs(val.after.row as i8 - val.before.row as i8) == 2 {
                     self.en_passant = Some(val.after);
                 }
                 match val.piece_moved.piece_type {
                     //Setting enPassant
                     PieceType::Pawn => {
-                        if abs(val.after.x as i8 - val.before.x as i8) == 2 {
+                        if abs(val.after.row as i8 - val.before.row as i8) == 2 {
                             self.en_passant = Some(val.after);
                         }
                     }, 
@@ -197,16 +197,16 @@ impl BoardState {
                             Color::White => {
                                 //Were the rooks on default positions?
                                 match val.before {
-                                    Position{x: 8, y: 1} => self.castle_rights.can_castle_white_queenside = false,
-                                    Position{x: 8, y: 8} => self.castle_rights.can_castle_white_kingside = false,
+                                    Position{row: 8, col: 1} => self.castle_rights.can_castle_white_queenside = false,
+                                    Position{row: 8, col: 8} => self.castle_rights.can_castle_white_kingside = false,
                                     _ => {}
                                 }
                             }, 
                             Color::Black => {
                                 match val.before {
                                     //Were the rooks on default positions?
-                                    Position{x: 1, y: 1} => self.castle_rights.can_castle_black_queenside = false,
-                                    Position{x: 1, y: 8} => self.castle_rights.can_castle_black_kingside = false,
+                                    Position{row: 1, col: 1} => self.castle_rights.can_castle_black_queenside = false,
+                                    Position{row: 1, col: 8} => self.castle_rights.can_castle_black_kingside = false,
                                     _ => {}
                                 }
                             }
@@ -242,13 +242,13 @@ impl BoardState {
 
             },
             MoveType::Promotion(val) => {
-                self.squares[val.before.x][val.before.y].piece = None;
-                self.squares[val.after.x][val.after.y].piece = Some(val.promote_to);
+                self.squares[val.before.row][val.before.col].piece = None;
+                self.squares[val.after.row][val.after.col].piece = Some(val.promote_to);
             }
             MoveType::EnPassant(val) => {
-                self.squares[val.before.x][val.before.y].piece = None;
-                self.squares[val.after.x][val.after.y].piece = Some(Piece{piece_type: PieceType::Pawn, color: self.active_color});
-                self.squares[val.en_passant_pos.x][val.en_passant_pos.y].piece = None;
+                self.squares[val.before.row][val.before.col].piece = None;
+                self.squares[val.after.row][val.after.col].piece = Some(Piece{piece_type: PieceType::Pawn, color: self.active_color});
+                self.squares[val.en_passant_pos.row][val.en_passant_pos.col].piece = None;
             }
         }
 
@@ -272,7 +272,7 @@ impl BoardState {
             for y in 2..10 {
                 if let Some(piece) = self.squares[x][y].piece {
                     if piece.piece_type == PieceType::King && piece.color == self.active_color.opposite() {
-                        king_pos_opt = Some(Position{x, y});
+                        king_pos_opt = Some(Position{row: x, col: y});
                     }
                 }
             }
@@ -285,7 +285,7 @@ impl BoardState {
         for dir in [Direction::Up, Direction::Down, Direction::Left, Direction::Right] {
             while next_pos.next_position(&dir).is_valid_position() {
                 next_pos = next_pos.next_position(&dir);
-                if let Some(piece) = self.squares[next_pos.x][next_pos.y].piece {
+                if let Some(piece) = self.squares[next_pos.row][next_pos.col].piece {
                     if piece.color == self.active_color && (piece.piece_type == PieceType::Rook || piece.piece_type == PieceType::Queen) {
                         return true;
                     }
@@ -301,7 +301,7 @@ impl BoardState {
         for dir in [Direction::UpRight, Direction::DownRight, Direction::UpLeft, Direction::DownLeft] {
             while next_pos.next_position(&dir).is_valid_position() {
                 next_pos = next_pos.next_position(&dir);
-                if let Some(piece) = self.squares[next_pos.x][next_pos.y].piece{
+                if let Some(piece) = self.squares[next_pos.row][next_pos.col].piece{
                     if piece.color == self.active_color && (piece.piece_type == PieceType::Bishop || piece.piece_type == PieceType::Queen) {
                         return true;
                     }
@@ -316,12 +316,12 @@ impl BoardState {
         let square_left;
         match self.active_color.opposite() {
             Color::White => {
-                square_right = self.squares[king_pos.up().right().x][king_pos.up().right().y];
-                square_left = self.squares[king_pos.up().left().x][king_pos.up().left().y];
+                square_right = self.squares[king_pos.up().right().row][king_pos.up().right().col];
+                square_left = self.squares[king_pos.up().left().row][king_pos.up().left().col];
             },
             Color::Black => {
-                square_right = self.squares[king_pos.down().right().x][king_pos.up().right().y];
-                square_left = self.squares[king_pos.down().left().x][king_pos.down().left().y];
+                square_right = self.squares[king_pos.down().right().row][king_pos.up().right().col];
+                square_left = self.squares[king_pos.down().left().row][king_pos.down().left().col];
             }
         }
         for square in vec![square_right, square_left] {
@@ -345,7 +345,7 @@ impl BoardState {
         ];
 
         for pos in possible_knight_positions {
-            if let Some(piece) = self.squares[pos.x][pos.y].piece {
+            if let Some(piece) = self.squares[pos.row][pos.col].piece {
                 if piece.piece_type == PieceType::Knight && piece.color == self.active_color {
                     return true;
                 }
@@ -365,7 +365,7 @@ impl BoardState {
         ];
 
         for pos in possible_king_positions {
-            if let Some(piece) = self.squares[pos.x][pos.y].piece {
+            if let Some(piece) = self.squares[pos.row][pos.col].piece {
                 if piece.piece_type == PieceType::King && piece.color == self.active_color {
                     return true;
                 }

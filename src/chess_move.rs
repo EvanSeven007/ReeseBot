@@ -3,8 +3,8 @@ use crate::color::{Color};
 /* Position in on a board */ 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub struct Position {
-    pub x: usize,
-    pub y: usize,
+    pub row: usize,
+    pub col: usize,
 }
 
 pub enum Direction {
@@ -16,62 +16,6 @@ pub enum Direction {
     UpLeft,
     DownRight,
     DownLeft,
-}
-
-///Struct that encapsulates the numerical position on a chessboard 
-impl Position {
-    pub fn swap(&self) -> Position {
-        Position {x: self.y, y: self.x}
-    }
-
-    pub fn is_valid_position(&self) -> bool {
-        self.x >= 2 && self.x <= 9 && self.y >= 2 && self.y <= 9
-    }
-
-    pub fn right(&self) -> Position {
-        Position{x: self.x, y: self.y + 1}
-    }
-
-    pub fn left(&self) -> Position {
-        Position{x: self.x, y: self.y - 1}
-    }
-
-    pub fn up(&self) -> Position {
-        Position{x: self.x - 1, y: self.y}
-    }
-
-    pub fn down(&self) -> Position {
-        Position{x: self.x + 1, y: self.y}
-    } 
-
-    pub fn next_position(&self, dir: &Direction) -> Position {
-        match dir {
-            Direction::Right => {
-                self.right()
-            },
-            Direction::Left => {
-                self.left()
-            },
-            Direction::Up => {
-                self.up()
-            },
-            Direction::Down => {
-                self.down()
-            },
-            Direction::UpRight => {
-                self.up().right()
-            },
-            Direction::UpLeft => {
-                self.up().left()
-            },
-            Direction::DownRight => {
-                self.down().right()
-            },
-            Direction::DownLeft => {
-                self.down().left()
-            },
-        }
-    }
 }
 
 /* All moves are of one of three types */ 
@@ -113,6 +57,62 @@ pub struct EnPassantMove {
 pub struct Move {
     pub move_type: MoveType,
     pub piece_captured: Option<Piece>, 
+}
+
+///Struct that encapsulates the numerical position on a chessboard 
+impl Position {
+    pub fn swap(&self) -> Position {
+        Position {row: self.col, col: self.row}
+    }
+
+    pub fn is_valid_position(&self) -> bool {
+        self.row >= 2 && self.row <= 9 && self.col >= 2 && self.col <= 9
+    }
+
+    pub fn right(&self) -> Position {
+        Position{row: self.row, col: self.col + 1}
+    }
+
+    pub fn left(&self) -> Position {
+        Position{row: self.row, col: self.col - 1}
+    }
+
+    pub fn up(&self) -> Position {
+        Position{row: self.row - 1, col: self.col}
+    }
+
+    pub fn down(&self) -> Position {
+        Position{row: self.row + 1, col: self.col}
+    } 
+
+    pub fn next_position(&self, dir: &Direction) -> Position {
+        match dir {
+            Direction::Right => {
+                self.right()
+            },
+            Direction::Left => {
+                self.left()
+            },
+            Direction::Up => {
+                self.up()
+            },
+            Direction::Down => {
+                self.down()
+            },
+            Direction::UpRight => {
+                self.up().right()
+            },
+            Direction::UpLeft => {
+                self.up().left()
+            },
+            Direction::DownRight => {
+                self.down().right()
+            },
+            Direction::DownLeft => {
+                self.down().left()
+            },
+        }
+    }
 }
 
 /* Constructor functions for each of the basic moves */
