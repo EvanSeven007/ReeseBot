@@ -1,4 +1,3 @@
-use std::fmt;
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum Color {
     White,

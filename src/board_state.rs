@@ -2,7 +2,6 @@ use crate::square::*;
 use crate::piece::*;
 use crate::color::*;
 use crate::chess_move::*;
-use crate::move_gen::*;
 use num::{abs};
 
 #[derive(Clone, Copy)]
@@ -146,7 +145,7 @@ impl BoardState {
 
     /* Gets the color of a board from its coordinates */
     fn get_color(val1: &usize, val2: &usize) -> Color {
-        if (val1 > &9 || val2 > &9) {
+        if !(1..=9).contains(val1) || !(1..=9).contains(val2) {
             panic!("Not a valid coordinate {} {}", val1, val2);
         }
 
@@ -165,7 +164,7 @@ impl BoardState {
         let move_type: &MoveType = &current_move.move_type;
         self.en_passant = None; //Reseting en_passant square to None after every move, this will be updated later depending on move
         match move_type {
-            MoveType::standard(val) => {
+            MoveType::Standard(val) => {
                 self.squares[val.before.x][val.before.y].piece = None;
                 self.squares[val.after.x][val.after.y].piece = Some(val.piece_moved);
                 //Setting enpassant 
@@ -217,7 +216,7 @@ impl BoardState {
                 }
             },
 
-            MoveType::castle(val) => {
+            MoveType::Castle(val) => {
                 let y_positions: Vec<usize>;
                 if val.is_kingside  {
                     y_positions = vec![5,8,7,6];
@@ -242,14 +241,14 @@ impl BoardState {
                 self.squares[8][y_positions[3]].piece = Some(Piece {piece_type: PieceType::Rook, color: self.active_color });
 
             },
-            MoveType::promotion(val) => {
+            MoveType::Promotion(val) => {
                 self.squares[val.before.x][val.before.y].piece = None;
                 self.squares[val.after.x][val.after.y].piece = Some(val.promote_to);
             }
-            MoveType::enPassant(val) => {
+            MoveType::EnPassant(val) => {
                 self.squares[val.before.x][val.before.y].piece = None;
                 self.squares[val.after.x][val.after.y].piece = Some(Piece{piece_type: PieceType::Pawn, color: self.active_color});
-                self.squares[val.en_passant.x][val.en_passant.y].piece = None;
+                self.squares[val.en_passant_pos.x][val.en_passant_pos.y].piece = None;
             }
         }
 
@@ -334,7 +333,7 @@ impl BoardState {
         }
 
         //Checking for knight
-        let mut possible_knight_positions: Vec<Position> = vec![
+        let possible_knight_positions: Vec<Position> = vec![
             king_pos.up().up().right(),
             king_pos.up().up().left(),
             king_pos.down().down().right(),
@@ -353,6 +352,26 @@ impl BoardState {
             }
         }
 
+        //Checking for king checks
+        let possible_king_positions: Vec<Position> = vec![
+            king_pos.up(),
+            king_pos.down(),
+            king_pos.left(),
+            king_pos.right(),
+            king_pos.up().right(),
+            king_pos.up().left(),
+            king_pos.down().left(),
+            king_pos.down().right(),
+        ];
+
+        for pos in possible_king_positions {
+            if let Some(piece) = self.squares[pos.x][pos.y].piece {
+                if piece.piece_type == PieceType::King && piece.color == self.active_color {
+                    return true;
+                }
+            }
+        }
+
         false
     }
 
@@ -365,5 +384,9 @@ impl BoardState {
             print!("\n");
         }
         println!("   [1][2][3][4][5][6][7][8]");
+    }
+
+    pub fn switch_color(mut self) {
+        self.active_color = self.active_color.opposite();
     }
 }

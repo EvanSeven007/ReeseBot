@@ -1,5 +1,4 @@
 use crate::piece::{Piece};
-use crate::board_state::{BoardState};
 use crate::color::{Color};
 /* Position in on a board */ 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
@@ -75,19 +74,12 @@ impl Position {
     }
 }
 
-/* Refactor this later */
-pub enum MoveValue {
-    StandardMove,
-    CastleMove,
-    PromotionMove,
-    EnPassantMove,
-}
 /* All moves are of one of three types */ 
 pub enum MoveType {
-    standard(StandardMove), //move a piece from one square to another
-    castle(CastleMove), //Castling 
-    promotion(PromotionMove), //upgrade pawn by getting to the back row
-    enPassant(EnPassantMove),
+    Standard(StandardMove), //move a piece from one square to another
+    Castle(CastleMove), //Castling 
+    Promotion(PromotionMove), //upgrade pawn by getting to the back row
+    EnPassant(EnPassantMove),
 
 }
 
@@ -114,7 +106,7 @@ pub struct PromotionMove {
 pub struct EnPassantMove {
     pub before: Position,
     pub after: Position,
-    pub en_passant: Position, //Square of captured piece
+    pub en_passant_pos: Position, //Square of captured piece
 }
 
 /* A general move */ 
@@ -125,7 +117,7 @@ pub struct Move {
 
 /* Constructor functions for each of the basic moves */
 pub fn standard(before: Position, after: Position, piece_moved: Piece, piece_captured: Option<Piece>) -> Move {
-    let move_type: MoveType = MoveType::standard(StandardMove{before, after, piece_moved});
+    let move_type: MoveType = MoveType::Standard(StandardMove{before, after, piece_moved});
     
     Move {
         move_type,
@@ -134,7 +126,7 @@ pub fn standard(before: Position, after: Position, piece_moved: Piece, piece_cap
 }
 
 pub fn castle(is_kingside: bool, color: Color) -> Move {
-    let move_type: MoveType = MoveType::castle(CastleMove{is_kingside, color});
+    let move_type: MoveType = MoveType::Castle(CastleMove{is_kingside, color});
 
     Move {
         move_type,
@@ -143,7 +135,7 @@ pub fn castle(is_kingside: bool, color: Color) -> Move {
 }
 
 pub fn promotion(before: Position, after: Position, promote_to: Piece, piece_captured: Option<Piece>) -> Move {
-    let move_type: MoveType = MoveType::promotion(PromotionMove{before, after, promote_to});
+    let move_type: MoveType = MoveType::Promotion(PromotionMove{before, after, promote_to});
     
     Move {
         move_type,
@@ -153,8 +145,8 @@ pub fn promotion(before: Position, after: Position, promote_to: Piece, piece_cap
 
 //Could be done better
 //Enpassant is position of captured pawn
-pub fn enPassant(before: Position, after: Position, en_passant: Position, piece_captured: Option<Piece>) -> Move{
-    let move_type: MoveType = MoveType::enPassant(EnPassantMove{before, after, en_passant});
+pub fn en_passant(before: Position, after: Position, en_passant_pos: Position, piece_captured: Option<Piece>) -> Move{
+    let move_type: MoveType = MoveType::EnPassant(EnPassantMove{before, after, en_passant_pos});
 
     Move {
         move_type,

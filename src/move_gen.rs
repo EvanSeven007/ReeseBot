@@ -7,10 +7,15 @@ use std::process::exit;
 
 pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
     /* Storing the positions of the white and black pieces */
-    let (curr_set, king_pos) = find_pieces(board, board.active_color);
+    let (curr_set, other_set, king_pos) = find_pieces(board, board.active_color);
 
-    let mut move_set: Vec<Move> = Vec::new(); /* change this to a set later */
+    if curr_set.len() + other_set.len() == 2 {
+        println!("Game over by Stalemate!");
+        exit(1);
+    }
     
+    let mut move_set: Vec<Move> = Vec::new(); /* change this to a set later */
+
     let mut curr_piece: Piece;
 
     for pos in &curr_set {
@@ -22,7 +27,7 @@ pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
             },
             //Make a fn for this
             PieceType::King => {
-                let mut possible_king_moves: Vec<Move> = vec![
+                let possible_king_moves: Vec<Move> = vec![
                     pos.up().left(),
                     pos.up(),
                     pos.up().right(),
@@ -56,7 +61,7 @@ pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
                 move_set.extend(possible_king_moves);
             },
             PieceType::Knight => {
-                let mut possible_knight_positions: Vec<Move> = vec![
+                let possible_knight_positions: Vec<Move> = vec![
                     pos.up().up().right(),
                     pos.up().up().left(),
                     pos.down().down().right(),
@@ -90,7 +95,6 @@ pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
 
             PieceType::Rook => {
                     let mut rook_positions: Vec<Move> = Vec::new();
-                    let mut curr_pos: Position; 
                     /* Looking horizontally */
                     for dir in vec![Direction::Right, Direction::Left, Direction::Up, Direction::Down] {
                         rook_positions.extend(move_in_direction(*pos, &dir, curr_piece.clone(), board));
@@ -100,7 +104,6 @@ pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
             },
             PieceType::Bishop => {
                 let mut bishop_positions: Vec<Move> = Vec::new();
-                let mut curr_pos: Position; 
                 /*Looking diagonally */
                 for dir in vec![Direction::UpRight, Direction::UpLeft, Direction::DownRight, Direction::DownLeft] {
                     bishop_positions.extend(move_in_direction(*pos, &dir, curr_piece.clone(), board));
@@ -110,7 +113,6 @@ pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
             },
             PieceType::Queen => {
                 let mut queen_positions: Vec<Move> = Vec::new();
-                let mut curr_pos: Position; 
                 /*Looking horizontally and diagonally */
                 for dir in vec![Direction::Right, Direction::Left, Direction::Up, Direction::Down,
                     Direction::UpRight, Direction::UpLeft, Direction::DownRight, Direction::DownLeft] {
@@ -134,6 +136,7 @@ pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
     }
 
     if legal_moves.len() == 0 {
+        board.switch_color();
         if !board.is_in_check(){
             println!("GAME OVER BY CHECKMATE: {} has defeated {}", board.active_color.opposite().color_to_string(), board.active_color.color_to_string());
         } else {
@@ -144,9 +147,10 @@ pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
     legal_moves
 }
 
-pub fn find_pieces(board: &BoardState, color: Color) -> (HashSet<Position>, Position){
+pub fn find_pieces(board: &BoardState, color: Color) -> (HashSet<Position>, HashSet<Position>, Position){
     /* Storing the positions of the white and black pieces */
     let mut curr_pieces: HashSet<Position> = HashSet::new();
+    let mut other_pieces: HashSet<Position> = HashSet::new();
     let mut opt_king_pos: Option<Position> = None;
         
     for x in 2..10 {
@@ -157,13 +161,15 @@ pub fn find_pieces(board: &BoardState, color: Color) -> (HashSet<Position>, Posi
                     if curr_piece.piece_type == PieceType::King {
                         opt_king_pos = Some(Position{x, y});
                     }
+                } else {
+                    other_pieces.insert(Position{x, y});
                 }
             }
         }
     }
     let king_pos: Position = opt_king_pos.expect("Could not find the king!");
 
-    (curr_pieces, king_pos)
+    (curr_pieces, other_pieces, king_pos)
 
 }
 
@@ -271,11 +277,11 @@ pub fn generate_pawn_moves(board: &BoardState, curr_pawn: Piece,pos: &Position) 
         }
 
         //Bug Source
-        if let Some(en_passant) = board.en_passant {
-            if en_passant == pos.left() {
-                pawn_moves.push(enPassant(*pos, en_passant_left, en_passant, Some(Piece{piece_type: PieceType::Pawn, color: curr_pawn.color.opposite()})));
-            } else if en_passant == pos.right() {
-                pawn_moves.push(enPassant(*pos, en_passant_right, en_passant, Some(Piece{piece_type: PieceType::Pawn, color: curr_pawn.color.opposite()})));
+        if let Some(en_passant_pos) = board.en_passant {
+            if en_passant_pos == pos.left() {
+                pawn_moves.push(en_passant(*pos, en_passant_left, en_passant_pos, Some(Piece{piece_type: PieceType::Pawn, color: curr_pawn.color.opposite()})));
+            } else if en_passant_pos == pos.right() {
+                pawn_moves.push(en_passant(*pos, en_passant_right, en_passant_pos, Some(Piece{piece_type: PieceType::Pawn, color: curr_pawn.color.opposite()})));
             }
         }
 
