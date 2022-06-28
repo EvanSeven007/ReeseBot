@@ -25,8 +25,9 @@ fn main() {
     let mut move_count: u64 = 0;
     print!("\x1B[2J\x1B[1;1H");
     board.print_board();
+    let DEPTH: i32 = 4;
     loop {
-        let best_move = find_move(&mut board);
+        let best_move = find_move(DEPTH, &mut board);
         board.make_move(&best_move);
         print!("\x1B[2J\x1B[1;1H"); //clear screen
         board.print_board();
