@@ -21,6 +21,7 @@ fn main() {
 
     println!("STARTING::::::");
 
+    //nonce
     //Play a random game
     let mut move_count: u64 = 0;
     print!("\x1B[2J\x1B[1;1H");
