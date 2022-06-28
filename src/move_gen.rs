@@ -5,7 +5,7 @@ use crate::board_state::*;
 use std::collections::HashSet;
 use std::process::exit;
 
-pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
+pub fn gen_all_moves(board: &mut BoardState) -> Vec<Move> {
     /* Storing the positions of the white and black pieces */
     let (curr_set, other_set, king_pos) = find_pieces(board, board.active_color);
 
@@ -134,16 +134,21 @@ pub fn gen_all_moves(board: &BoardState) -> Vec<Move> {
             legal_moves.push(mv);
         }
     }
-
+    /*
     if legal_moves.len() == 0 {
         board.switch_color();
         if !board.is_in_check(){
+            match board.active_color {
+                Color::White => board.status = BoardStatus::BlackWin,
+                Color::Black => board.status = BoardStatus::WhiteWin,
+            }
             println!("GAME OVER BY CHECKMATE: {} has defeated {}", board.active_color.opposite().color_to_string(), board.active_color.color_to_string());
         } else {
+            board.status = BoardStatus::Draw;
             println!("Game over by Stalemate!");
         }
-        exit(1);
     }
+    */
     legal_moves
 }
 
@@ -152,9 +157,9 @@ pub fn find_pieces(board: &BoardState, color: Color) -> (HashSet<Position>, Hash
     let mut curr_pieces: HashSet<Position> = HashSet::new();
     let mut other_pieces: HashSet<Position> = HashSet::new();
     let mut opt_king_pos: Option<Position> = None;
-        
-    for x in 2..10 {
-        for y in 2..10 {
+    
+    for x in 2..=10 {
+        for y in 2..=10 {
             if let Some(curr_piece) = board.squares[x][y].piece {
                 if curr_piece.color == color {
                     curr_pieces.insert(Position{row: x, col: y});
@@ -167,8 +172,17 @@ pub fn find_pieces(board: &BoardState, color: Color) -> (HashSet<Position>, Hash
             }
         }
     }
-    let king_pos: Position = opt_king_pos.expect("Could not find the king!");
 
+    //let king_pos: Position = opt_king_pos.expect("Could not find the king!");
+    let king_pos;
+    match opt_king_pos {
+        Some(pos) => king_pos = pos,
+        None => {
+            board.print_board();
+            panic!("could not find the king");
+        }
+    }
+    
     (curr_pieces, other_pieces, king_pos)
 
 }

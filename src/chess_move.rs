@@ -1,4 +1,4 @@
-use crate::piece::{Piece};
+use crate::piece::{Piece, PieceType};
 use crate::color::{Color};
 /* Position in on a board */ 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
@@ -19,6 +19,7 @@ pub enum Direction {
 }
 
 /* All moves are of one of three types */ 
+#[derive(Clone, Copy)]
 pub enum MoveType {
     Standard(StandardMove), //move a piece from one square to another
     Castle(CastleMove), //Castling 
@@ -28,6 +29,7 @@ pub enum MoveType {
 }
 
 /* Standard moves involve normal captures and enpassants */ 
+#[derive(Clone, Copy)]
 pub struct StandardMove { //enpassant is in this?
     pub before: Position, 
     pub after: Position, 
@@ -35,25 +37,29 @@ pub struct StandardMove { //enpassant is in this?
 }
 
 /* Castles are either king or queenside */
+#[derive(Clone, Copy)]
 pub struct CastleMove {
     pub is_kingside: bool, //Else queenside
     pub color: Color, 
 }
 
 /* Promoting a pawn */
+#[derive(Clone, Copy)]
 pub struct PromotionMove {
     pub before: Position,
     pub after: Position,
     pub promote_to: Piece,
 }
 
+#[derive(Clone, Copy)]
 pub struct EnPassantMove {
     pub before: Position,
     pub after: Position,
     pub en_passant_pos: Position, //Square of captured piece
 }
 
-/* A general move */ 
+/* A general move */
+#[derive(Clone, Copy)] 
 pub struct Move {
     pub move_type: MoveType,
     pub piece_captured: Option<Piece>, 
@@ -135,6 +141,7 @@ pub fn castle(is_kingside: bool, color: Color) -> Move {
 }
 
 pub fn promotion(before: Position, after: Position, promote_to: Piece, piece_captured: Option<Piece>) -> Move {
+    assert!(promote_to.piece_type != PieceType::King);
     let move_type: MoveType = MoveType::Promotion(PromotionMove{before, after, promote_to});
     
     Move {

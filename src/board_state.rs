@@ -18,6 +18,15 @@ pub struct BoardState {
     pub active_color: Color, 
     pub castle_rights: CastleRights,
     pub en_passant: Option<Position>,
+    pub status: BoardStatus,
+}
+
+#[derive(Clone, Copy)]
+pub enum BoardStatus {
+    Active,
+    Draw,
+    WhiteWin,
+    BlackWin,
 }
 
 impl BoardState { 
@@ -26,6 +35,7 @@ impl BoardState {
         //Creating an 12x12 array of uninitialized arrays
         //The chess board will sit in the center, with two squares of "boundary" around them. This is so we don't have to deal with out of array errors later on
         let mut squares = [[Square {piece: None, color: (Color::White) }; 12]; 12]; //Setting to white and then updating later
+        let status = BoardStatus::Active;
         //Assigning colors, but not charged
         for index in 2..10 {
             for inner_index in 1..9 {
@@ -120,7 +130,7 @@ impl BoardState {
             return Err("fen string enpassant malformed!")
         }
 
-        Ok(BoardState { squares, active_color, castle_rights, en_passant})
+        Ok(BoardState { squares, active_color, castle_rights, en_passant, status})
     }
 
 

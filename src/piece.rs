@@ -1,4 +1,4 @@
-use crate::color;
+use crate::color::{Color};
 
 /* Enumeration for a piece type */ 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -16,5 +16,25 @@ pub enum PieceType {
 #[derive(Clone, Copy)]
 pub struct Piece {
     pub piece_type: PieceType,
-    pub color: color::Color,
+    pub color: Color,
+}
+
+impl Piece {
+    pub fn worth(self) -> i32 {
+        let mult: i32;
+        
+        match self.color {
+            Color::White => mult = 1,
+            Color::Black => mult = -1,
+        }
+
+        match self.piece_type {
+            PieceType::King => mult * 90,
+            PieceType::Queen => mult * 9,
+            PieceType::Rook => mult * 5,
+            PieceType::Bishop | PieceType::Knight => mult * 3,
+            PieceType::Pawn => mult * 1,
+            PieceType::None => 0,
+        }
+    }
 }
