@@ -241,6 +241,30 @@ impl BoardState {
             MoveType::Standard(val) => {
                 self.squares[val.before.row][val.before.col].piece = None;
                 self.squares[val.after.row][val.after.col].piece = Some(val.piece_moved);
+
+                //Was the rook captured in the default positions?
+                if let Some(piece) = current_move.piece_captured {
+                    if piece.piece_type == PieceType::Rook {
+                        match val.piece_moved.color {
+                            Color::White => {
+                                //Were the rooks on default positions?
+                                match val.after {
+                                    Position{row: 2, col: 2} => self.castle_rights.can_castle_black_queenside = false,
+                                    Position{row: 2, col: 9} => self.castle_rights.can_castle_black_kingside = false,
+                                    _ => {}
+                                } 
+                            },
+                            Color::Black => {
+                                match val.after {
+                                //Were the rooks on default positions?
+                                    Position{row: 9, col: 2} => self.castle_rights.can_castle_white_queenside = false,
+                                    Position{row: 9, col: 9} => self.castle_rights.can_castle_white_kingside = false,
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+                }
                 //Setting enpassant 
                 match val.piece_moved.piece_type {
                     //Setting enPassant
@@ -268,46 +292,22 @@ impl BoardState {
                             Color::White => {
                                 //Were the rooks on default positions?
                                 match val.before {
-                                    Position{row: 8, col: 1} => self.castle_rights.can_castle_white_queenside = false,
-                                    Position{row: 8, col: 8} => self.castle_rights.can_castle_white_kingside = false,
+                                    Position{row: 9, col: 2} => self.castle_rights.can_castle_white_queenside = false,
+                                    Position{row: 9, col: 9} => self.castle_rights.can_castle_white_kingside = false,
                                     _ => {}
                                 }
                             }, 
                             Color::Black => {
                                 match val.before {
                                     //Were the rooks on default positions?
-                                    Position{row: 1, col: 1} => self.castle_rights.can_castle_black_queenside = false,
-                                    Position{row: 1, col: 8} => self.castle_rights.can_castle_black_kingside = false,
+                                    Position{row: 2, col: 2} => self.castle_rights.can_castle_black_queenside = false,
+                                    Position{row: 2, col: 9} => self.castle_rights.can_castle_black_kingside = false,
                                     _ => {}
                                 }
                             }
                         }
                     },
                     _ => {}
-                }
-
-                //Was the rook captured in the default positions?
-                if let Some(piece) = current_move.piece_captured {
-                    if piece.piece_type == PieceType::Rook {
-                        match val.piece_moved.color {
-                            Color::White => {
-                                //Were the rooks on default positions?
-                                match val.before {
-                                    Position{row: 8, col: 1} => self.castle_rights.can_castle_white_queenside = false,
-                                    Position{row: 8, col: 8} => self.castle_rights.can_castle_white_kingside = false,
-                                    _ => {}
-                                }
-                            }, 
-                            Color::Black => {
-                                match val.before {
-                                    //Were the rooks on default positions?
-                                    Position{row: 1, col: 1} => self.castle_rights.can_castle_black_queenside = false,
-                                    Position{row: 1, col: 8} => self.castle_rights.can_castle_black_kingside = false,
-                                    _ => {}
-                                }
-                            }
-                        }
-                    }
                 }
             },
 
@@ -481,7 +481,7 @@ impl BoardState {
 
     pub fn print_board(&self) {
         for index in 2..10 {
-            print!("[{}]", 10 - index);
+            print!("[{}]", index);
             for inner_index in 2..10{
                 print!("{}", self.squares[index][inner_index].symbol());
             }

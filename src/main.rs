@@ -14,7 +14,7 @@ use std::env;
 
 fn main() {
     env::set_var("RUST_BACKTRACE", "1");
-    let board_state_fen = "r3k2r/p1p1qpb1/bn1ppnp1/3PN3/1p2P3/P1N2Q1p/1PPBBPPP/R4K1R w kq - - -";
+    let board_state_fen = "r3k2r/p2pqNb1/bnp1pnp1/3P4/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - - -";
     let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
     let mut board: BoardState;
 
@@ -34,7 +34,7 @@ fn main() {
         let num_moves_curr = count_moves(1, &board_copy);
         num_moves += num_moves_curr;
         println!("{} {}", mv.to_string(), num_moves_curr);
-        //println!("king_w: {}, queen_w: {}, king_b: {}, queen_b: {}", board_copy.castle_rights.can_castle_white_kingside, board_copy.castle_rights.can_castle_white_queenside, board_copy.castle_rights.can_castle_black_kingside, board_copy.castle_rights.can_castle_black_queenside);
+        println!("king_w: {}, queen_w: {}, king_b: {}, queen_b: {}", board_copy.castle_rights.can_castle_white_kingside, board_copy.castle_rights.can_castle_white_queenside, board_copy.castle_rights.can_castle_black_kingside, board_copy.castle_rights.can_castle_black_queenside);
         //board_copy.print_board();
     }
     println!("{}", num_moves);
@@ -78,7 +78,7 @@ mod tests {
         assert_eq!(count_moves(1, &mut board), 20);
         assert_eq!(count_moves(2, &mut board), 400);
         assert_eq!(count_moves(3, &mut board), 8902);
-        //assert_eq!(count_moves(4, &mut board), 197281);
+        assert_eq!(count_moves(4, &mut board), 197281);
         //assert_eq!(count_moves(5, &mut board), 4865609);
     }
 
