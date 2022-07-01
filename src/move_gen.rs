@@ -5,9 +5,9 @@ use crate::board_state::*;
 use std::collections::HashSet;
 use std::process::exit;
 
-pub fn gen_all_moves(board: &mut BoardState) -> Vec<Move> {
+pub fn gen_all_moves(board: &BoardState, color: Color) -> Vec<Move> {
     /* Storing the positions of the white and black pieces */
-    let (curr_set, other_set, king_pos) = find_pieces(board, board.active_color);
+    let (curr_set, other_set, king_pos) = find_pieces(board, color);
 
     if curr_set.len() + other_set.len() == 2 {
         println!("Game over by Stalemate!");
@@ -130,25 +130,11 @@ pub fn gen_all_moves(board: &mut BoardState) -> Vec<Move> {
     for mv in move_set {
         let mut board_copy: BoardState = board.clone();
         board_copy.make_move(&mv); //Bug here lol
-        if !board_copy.is_in_check() {
+        if !board_copy.is_in_check(color, None) {
             legal_moves.push(mv);
         }
     }
-    /*
-    if legal_moves.len() == 0 {
-        board.switch_color();
-        if !board.is_in_check(){
-            match board.active_color {
-                Color::White => board.status = BoardStatus::BlackWin,
-                Color::Black => board.status = BoardStatus::WhiteWin,
-            }
-            println!("GAME OVER BY CHECKMATE: {} has defeated {}", board.active_color.opposite().color_to_string(), board.active_color.color_to_string());
-        } else {
-            board.status = BoardStatus::Draw;
-            println!("Game over by Stalemate!");
-        }
-    }
-    */
+
     legal_moves
 }
 
@@ -182,26 +168,32 @@ pub fn find_pieces(board: &BoardState, color: Color) -> (HashSet<Position>, Hash
             panic!("could not find the king");
         }
     }
-    
+
     (curr_pieces, other_pieces, king_pos)
 
 }
 
 pub fn generate_castle_moves(king_pos: &Position, castle_rights: &CastleRights, color: Color, board: &BoardState) -> Vec<Move> {
     let mut castle_moves: Vec<Move> = Vec::new();
-    let king_side_squares;
-    let queen_side_squares;
     let mut king_side: bool = true;
     let mut queen_side: bool = true;
+    let mut king_side_squares; 
+    let mut queen_side_squares; 
+
+    if board.is_in_check(color, None) {
+        return castle_moves;
+    }
+    //Problem is that we can't castle in
     match color.clone() {
         Color::White => {
             if castle_rights.can_castle_white_kingside {
                 king_side_squares = vec![
-                    board.squares[king_pos.right().row][king_pos.right().col],
-                    board.squares[king_pos.right().right().row][king_pos.right().right().col]
+                    king_pos.right(),
+                    king_pos.right().right(),
                 ];
-                for square in &king_side_squares {
-                    if square.is_occupied() {
+                for pos in &king_side_squares {
+                    let square = board.squares[pos.row][pos.col];
+                    if square.is_occupied() || board.is_in_check(Color::White, Some(*pos)) {
                         king_side = false;
                     }
                 }
@@ -209,16 +201,22 @@ pub fn generate_castle_moves(king_pos: &Position, castle_rights: &CastleRights, 
                     castle_moves.push(castle(true, color));
                 }
             }
+            //No castle into check
             if castle_rights.can_castle_white_queenside {
                 queen_side_squares = vec![
-                    board.squares[king_pos.left().row][king_pos.left().col],
-                    board.squares[king_pos.left().left().row][king_pos.left().left().col],
-                    board.squares[king_pos.left().left().left().row][king_pos.left().left().left().col]
+                    king_pos.left(),
+                    king_pos.left().left(),
+                    king_pos.left().left().left(),
                 ];
-
-                for square in &queen_side_squares {
+                for pos in &queen_side_squares {
+                    let square = board.squares[pos.row][pos.col];
                     if square.is_occupied() {
                         queen_side = false;
+                    }
+                    if *pos != king_pos.left().left().left() {
+                        if board.is_in_check(Color::White, Some(*pos)) {
+                            queen_side = false;
+                        }
                     }
                 }
 
@@ -230,11 +228,12 @@ pub fn generate_castle_moves(king_pos: &Position, castle_rights: &CastleRights, 
         Color::Black => {
             if castle_rights.can_castle_black_kingside {
                 king_side_squares = vec![
-                    board.squares[king_pos.left().row][king_pos.left().col],
-                    board.squares[king_pos.left().left().row][king_pos.left().left().col]
+                    king_pos.right(),
+                    king_pos.right().right(),
                 ];
-                for square in &king_side_squares {
-                    if square.is_occupied() {
+                for pos in &king_side_squares {
+                    let square = board.squares[pos.row][pos.col];
+                    if square.is_occupied() || board.is_in_check(Color::Black, Some(*pos)) {
                         king_side = false;
                     }
                 }
@@ -244,14 +243,20 @@ pub fn generate_castle_moves(king_pos: &Position, castle_rights: &CastleRights, 
             }
             if castle_rights.can_castle_black_queenside {
                 queen_side_squares = vec![
-                    board.squares[king_pos.right().row][king_pos.right().col],
-                    board.squares[king_pos.right().right().row][king_pos.right().right().col],
-                    board.squares[king_pos.right().right().right().row][king_pos.right().right().right().col]
+                    king_pos.left(),
+                    king_pos.left().left(),
+                    king_pos.left().left().left(),
                 ];
-
-                for square in &queen_side_squares {
+                for pos in &queen_side_squares {
+                    let square = board.squares[pos.row][pos.col];
                     if square.is_occupied() {
                         queen_side = false;
+                    }
+
+                    if *pos != king_pos.left().left().left() {
+                        if board.is_in_check(Color::Black, Some(*pos)) {
+                            queen_side = false;
+                        }
                     }
                 }
 
@@ -278,7 +283,7 @@ pub fn generate_pawn_moves(board: &BoardState, curr_pawn: Piece,pos: &Position) 
             pawn_moves.push(standard(*pos, one_up, curr_pawn.clone(), None));
         }
         //moving two up
-        if first_move && !board.squares[two_up.row][two_up.col].is_occupied() {
+        if first_move && !board.squares[two_up.row][two_up.col].is_occupied() && !board.squares[one_up.row][one_up.col].is_occupied() {
             pawn_moves.push(standard(*pos, two_up, curr_pawn.clone(), None));
         }
         //Captures
@@ -365,14 +370,15 @@ pub fn generate_pawn_permissions(pos: &Position, color: &Color) -> (bool, bool) 
 
     match color {
         Color::White => {
-            first_move = pos.row == 7;
-            is_promotion = pos.row == 2;
+            first_move = pos.row == 8;
+            is_promotion = pos.row == 3;
         }
         Color::Black => {
-            first_move = pos.row == 2;
-            is_promotion = pos.row == 7; 
+            first_move = pos.row == 3;
+            is_promotion = pos.row == 8; 
         }
     }
+
     (first_move, is_promotion)
 }
 
@@ -399,4 +405,3 @@ pub fn move_in_direction(pos: Position, dir: &Direction, piece: Piece, board: &B
 
     valid_moves
 }
-

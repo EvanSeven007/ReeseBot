@@ -1,5 +1,6 @@
 use crate::piece::{Piece, PieceType};
 use crate::color::{Color};
+
 /* Position in on a board */ 
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub struct Position {
@@ -25,7 +26,6 @@ pub enum MoveType {
     Castle(CastleMove), //Castling 
     Promotion(PromotionMove), //upgrade pawn by getting to the back row
     EnPassant(EnPassantMove),
-
 }
 
 /* Standard moves involve normal captures and enpassants */ 
@@ -63,6 +63,28 @@ pub struct EnPassantMove {
 pub struct Move {
     pub move_type: MoveType,
     pub piece_captured: Option<Piece>, 
+}
+
+impl Move {
+    pub fn to_string(self) -> String {
+        match self.move_type {
+            MoveType::Standard(val) => {
+                return format!("{}{}", val.before.to_string(), val.after.to_string());
+            },
+            MoveType::Promotion(val) => {
+                return format!("{}{}", val.before.to_string(), val.after.to_string());
+            },
+            MoveType::EnPassant(val) => {
+                return format!("{}{}", val.before.to_string(), val.after.to_string());
+            },
+            MoveType::Castle(val) => {
+                match val.is_kingside {
+                    true => return String::from("0-0"),
+                    false => return String::from("0-0-0"),
+                }
+            }
+        }
+    }
 }
 
 ///Struct that encapsulates the numerical position on a chessboard 
@@ -118,6 +140,24 @@ impl Position {
                 self.down().left()
             },
         }
+    }
+
+    pub fn to_string(self) -> String {
+        let mut start = String::new();
+        match self.col {
+            2 => start = String::from("a"),
+            3 => start = String::from("b"),
+            4 => start = String::from("c"),
+            5 => start = String::from("d"),
+            6 => start = String::from("e"),
+            7 => start = String::from("f"),
+            8 => start = String::from("g"),
+            9 => start = String::from("h"),
+            _ => start = String::from("WHAT!"),
+        }
+        let mut end = (10 - self.row).to_string();
+
+        format!("{}{}", start, end)
     }
 }
 

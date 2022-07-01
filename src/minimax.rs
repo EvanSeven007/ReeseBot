@@ -35,7 +35,8 @@ fn minimax(depth: i32, board: &BoardState, isMaximizing: bool) -> i32 {
     let mut curr_score: i32;
     let mut best_move: Move;
     let mut copy = board.clone();
-    let moves = gen_all_moves(&mut copy);
+    let active_color = copy.active_color;
+    let moves = gen_all_moves(&mut copy, active_color);
     if isMaximizing {
         best_score = std::i32::MIN;
         for mv in moves {
@@ -72,7 +73,8 @@ pub fn find_move(depth: i32, board: &mut BoardState) -> Move {
         }
     }
 
-    let moves = gen_all_moves(board);
+    let active_color = board.active_color;
+    let moves = gen_all_moves(board, active_color);
     if moves.len() == 0 {
         stop_game(board);
     }
@@ -92,7 +94,7 @@ pub fn find_move(depth: i32, board: &mut BoardState) -> Move {
 }
 
 fn stop_game(board: &mut BoardState) {
-    if !board.is_in_check(){
+    if !board.is_in_check(board.active_color, None){
         match board.active_color {
             Color::White => board.status = BoardStatus::BlackWin,
             Color::Black => board.status = BoardStatus::WhiteWin,

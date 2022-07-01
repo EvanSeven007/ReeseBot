@@ -25,6 +25,8 @@ pub struct BoardState {
 pub enum BoardStatus {
     Active,
     Draw,
+    WhiteInCheck,
+    BlackInCheck,
     WhiteWin,
     BlackWin,
 }
@@ -38,7 +40,7 @@ impl BoardState {
         let status = BoardStatus::Active;
         //Assigning colors, but not charged
         for index in 2..10 {
-            for inner_index in 1..9 {
+            for inner_index in 2..10 {
                 squares[index][inner_index].color = BoardState::get_color(&index, &inner_index);
             }
         }
@@ -133,6 +135,68 @@ impl BoardState {
         Ok(BoardState { squares, active_color, castle_rights, en_passant, status})
     }
 
+    /* 
+    fn get_status(squares) -> BoardStatus {
+        let mut pieces: Vec<Piece> = Vec::new();
+        let mut white_king_opt = None;
+        let mut black_king_opt = None;
+        //Finding pieces and kings
+        for row in 2..10 {
+            for col in 2..10 {
+                if let Some(piece) = squares[row][col].piece {
+                    if piece.piece_type == PieceType::King {
+                        match piece.color {
+                            Color::White => white_king_opt = Some(piece),
+                            Color::Black => black_king_opt = Some(piece),
+                        }
+                    } else {
+                        pieces.push(piece);
+                    }
+                }
+            }
+        }
+
+        let white_king = white_king_opt.expect("No white king!");
+        let black_king = black_king_opt.expect("No black king!");
+        //White In Check, Black in Check
+        let white_in_check = board.is_in_check(Color::White);
+        let black_in_check = board.is_in_check(Color::White);
+        if white_in_check && black_in_check {
+            println!("Something went wrong! Both boards are in check!");
+            exit(1);
+        }
+
+        if white_in_check {
+            match gen_all_moves(board, Color::White).len() {
+                0 => return BoardStatus::BlackWin,
+                _ => return BoardStatus::WhiteInCheck,
+            }
+        }
+        
+        if black_in_check { 
+            match gen_all_moves(board, Color::Black).len() {
+                0 => return BoardStatus::WhiteWin,
+                _ => return BoardStatus::BlackInCheck,
+            }
+        }
+        //Draw Conditions
+        //Only two pieces and they're both kings
+        //Only three pieces and one of them is a knight or bishop 
+        //Stalemate
+
+        match pieces.len() {
+            0 => return BoardStatus::Draw,
+            1 => {
+                if (pieces[0].piece_type == PieceType::Bishop) || (pieces[0].piece_type == PieceType::Knight) {
+                    return BoardStatus::Draw,
+                }
+            }
+        }
+
+        BoardStatus::Active
+    }
+    */
+
 
     fn parse_fen_entry(entry: &char) -> Result<Option<Piece>, &str> {
         match entry {
@@ -155,7 +219,7 @@ impl BoardState {
 
     /* Gets the color of a board from its coordinates */
     fn get_color(val1: &usize, val2: &usize) -> Color {
-        if !(1..=9).contains(val1) || !(1..=9).contains(val2) {
+        if !(2..=9).contains(val1) || !(2..=9).contains(val2) {
             panic!("Not a valid coordinate {} {}", val1, val2);
         }
 
@@ -178,9 +242,6 @@ impl BoardState {
                 self.squares[val.before.row][val.before.col].piece = None;
                 self.squares[val.after.row][val.after.col].piece = Some(val.piece_moved);
                 //Setting enpassant 
-                if val.piece_moved.piece_type == PieceType::Pawn && abs(val.after.row as i8 - val.before.row as i8) == 2 {
-                    self.en_passant = Some(val.after);
-                }
                 match val.piece_moved.piece_type {
                     //Setting enPassant
                     PieceType::Pawn => {
@@ -224,31 +285,58 @@ impl BoardState {
                     },
                     _ => {}
                 }
+
+                //Was the rook captured in the default positions?
+                if let Some(piece) = current_move.piece_captured {
+                    if piece.piece_type == PieceType::Rook {
+                        match val.piece_moved.color {
+                            Color::White => {
+                                //Were the rooks on default positions?
+                                match val.before {
+                                    Position{row: 8, col: 1} => self.castle_rights.can_castle_white_queenside = false,
+                                    Position{row: 8, col: 8} => self.castle_rights.can_castle_white_kingside = false,
+                                    _ => {}
+                                }
+                            }, 
+                            Color::Black => {
+                                match val.before {
+                                    //Were the rooks on default positions?
+                                    Position{row: 1, col: 1} => self.castle_rights.can_castle_black_queenside = false,
+                                    Position{row: 1, col: 8} => self.castle_rights.can_castle_black_kingside = false,
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+                }
             },
 
             MoveType::Castle(val) => {
+                let x_position;
                 let y_positions: Vec<usize>;
                 if val.is_kingside  {
-                    y_positions = vec![5,8,7,6];
+                    y_positions = vec![6,9,8,7];
                 }
                 else {
-                    y_positions = vec![5,1,3,4];
+                    y_positions = vec![6,2,4,5];
                 }
                 //Set castling rights here
                 match val.color {
                     Color::White => {
+                        x_position = 9;
                         self.castle_rights.can_castle_white_kingside = false;
                         self.castle_rights.can_castle_white_queenside = false;
                     }
                     Color::Black => {
+                        x_position = 2;
                         self.castle_rights.can_castle_black_kingside = false;
                         self.castle_rights.can_castle_black_queenside = false;
                     }
                 }
-                self.squares[8][y_positions[0]].piece = None;
-                self.squares[8][y_positions[1]].piece = None;
-                self.squares[8][y_positions[2]].piece = Some(Piece {piece_type: PieceType::King, color: self.active_color });
-                self.squares[8][y_positions[3]].piece = Some(Piece {piece_type: PieceType::Rook, color: self.active_color });
+                self.squares[x_position][y_positions[0]].piece = None;
+                self.squares[x_position][y_positions[1]].piece = None;
+                self.squares[x_position][y_positions[2]].piece = Some(Piece {piece_type: PieceType::King, color: self.active_color });
+                self.squares[x_position][y_positions[3]].piece = Some(Piece {piece_type: PieceType::Rook, color: self.active_color });
 
             },
             MoveType::Promotion(val) => {
@@ -272,23 +360,28 @@ impl BoardState {
     /* Checks if the king is in check given a certain position 
         Returns True if the king of active color is in check, false otherwise
     */
-    pub fn is_in_check(self: BoardState) -> bool {
+    pub fn is_in_check(self: BoardState, color: Color, passed_king_pos: Option<Position>) -> bool {
         //White makes move -> black is active color, check if whtie is in check
         //Finding the king
         let king_pos: Position;
+        //REFACTOR LATER
         let mut king_pos_opt: Option<Position> = None;
 
         for x in 2..10 {
             for y in 2..10 {
                 if let Some(piece) = self.squares[x][y].piece {
-                    if piece.piece_type == PieceType::King && piece.color == self.active_color.opposite() {
+                    if piece.piece_type == PieceType::King && piece.color == color {
                         king_pos_opt = Some(Position{row: x, col: y});
                     }
                 }
             }
         }
-
-        king_pos = king_pos_opt.expect("Could not find the king!");
+        
+        if let Some(val) = passed_king_pos {
+            king_pos = val;
+        } else {
+            king_pos = king_pos_opt.expect("Could not find the king!");
+        }
 
         //Checking by rook/Queen
         let mut next_pos = king_pos.clone();
@@ -296,7 +389,7 @@ impl BoardState {
             while next_pos.next_position(&dir).is_valid_position() {
                 next_pos = next_pos.next_position(&dir);
                 if let Some(piece) = self.squares[next_pos.row][next_pos.col].piece {
-                    if piece.color == self.active_color && (piece.piece_type == PieceType::Rook || piece.piece_type == PieceType::Queen) {
+                    if piece.color != color && (piece.piece_type == PieceType::Rook || piece.piece_type == PieceType::Queen) {
                         return true;
                     }
                     break;
@@ -312,7 +405,7 @@ impl BoardState {
             while next_pos.next_position(&dir).is_valid_position() {
                 next_pos = next_pos.next_position(&dir);
                 if let Some(piece) = self.squares[next_pos.row][next_pos.col].piece{
-                    if piece.color == self.active_color && (piece.piece_type == PieceType::Bishop || piece.piece_type == PieceType::Queen) {
+                    if piece.color != color && (piece.piece_type == PieceType::Bishop || piece.piece_type == PieceType::Queen) {
                         return true;
                     }
                     break;   
@@ -324,7 +417,7 @@ impl BoardState {
         //Checking for pawn 
         let square_right;
         let square_left;
-        match self.active_color.opposite() {
+        match color {
             Color::White => {
                 square_right = self.squares[king_pos.up().right().row][king_pos.up().right().col];
                 square_left = self.squares[king_pos.up().left().row][king_pos.up().left().col];
@@ -334,9 +427,10 @@ impl BoardState {
                 square_left = self.squares[king_pos.down().left().row][king_pos.down().left().col];
             }
         }
+
         for square in vec![square_right, square_left] {
             if let Some(piece) = square.piece {
-                if piece.piece_type == PieceType::Pawn && piece.color == self.active_color {
+                if piece.piece_type == PieceType::Pawn && piece.color != color {
                     return true;
                 }
             }
@@ -356,7 +450,7 @@ impl BoardState {
 
         for pos in possible_knight_positions {
             if let Some(piece) = self.squares[pos.row][pos.col].piece {
-                if piece.piece_type == PieceType::Knight && piece.color == self.active_color {
+                if piece.piece_type == PieceType::Knight && piece.color != color {
                     return true;
                 }
             }
@@ -376,7 +470,7 @@ impl BoardState {
 
         for pos in possible_king_positions {
             if let Some(piece) = self.squares[pos.row][pos.col].piece {
-                if piece.piece_type == PieceType::King && piece.color == self.active_color {
+                if piece.piece_type == PieceType::King && piece.color != color {
                     return true;
                 }
             }
@@ -387,13 +481,13 @@ impl BoardState {
 
     pub fn print_board(&self) {
         for index in 2..10 {
-            print!("[{}]", index);
-            for inner_index in 2..10 {
+            print!("[{}]", 10 - index);
+            for inner_index in 2..10{
                 print!("{}", self.squares[index][inner_index].symbol());
             }
             print!("\n");
         }
-        println!("   [1][2][3][4][5][6][7][8]");
+        println!("   [a][b][c][d][e][f][g][h]");
     }
 
     pub fn switch_color(mut self) {
