@@ -245,26 +245,15 @@ impl BoardState {
                 //Was the rook captured in the default positions?
                 if let Some(piece) = current_move.piece_captured {
                     if piece.piece_type == PieceType::Rook {
-                        match val.piece_moved.color {
-                            Color::White => {
-                                //Were the rooks on default positions?
-                                match val.after {
-                                    Position{row: 2, col: 2} => self.castle_rights.can_castle_black_queenside = false,
-                                    Position{row: 2, col: 9} => self.castle_rights.can_castle_black_kingside = false,
-                                    _ => {}
-                                } 
-                            },
-                            Color::Black => {
-                                match val.after {
-                                //Were the rooks on default positions?
-                                    Position{row: 9, col: 2} => self.castle_rights.can_castle_white_queenside = false,
-                                    Position{row: 9, col: 9} => self.castle_rights.can_castle_white_kingside = false,
-                                    _ => {}
-                                }
-                            }
+                        match val.after {
+                            Position{row: 2, col: 2} => self.castle_rights.can_castle_black_queenside = false,
+                            Position{row: 2, col: 9} => self.castle_rights.can_castle_black_kingside = false,
+                            Position{row: 9, col: 2} => self.castle_rights.can_castle_white_queenside = false,
+                            Position{row: 9, col: 9} => self.castle_rights.can_castle_white_kingside = false,
+                            _ => {}
+                            } 
                         }
                     }
-                }
                 //Setting enpassant 
                 match val.piece_moved.piece_type {
                     //Setting enPassant

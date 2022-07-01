@@ -8,7 +8,6 @@ mod minimax;
 
 use board_state::BoardState;
 use rand::seq::SliceRandom;
-use crate::minimax::{find_move};
 use crate::move_gen::gen_all_moves;
 use std::env;
 
@@ -115,6 +114,61 @@ mod tests {
         assert_eq!(count_moves(2, &mut board), 191);
         assert_eq!(count_moves(3, &mut board), 2812);
         assert_eq!(count_moves(4, &mut board), 43238);
+    }
+
+    #[test] //Making sure the number of moves is correct
+    fn move_test_fourth_pos() {
+        let board_state_fen = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
+        let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
+        let mut board: BoardState;
+
+        match board_state {
+            Ok(_) => board = board_state.unwrap(),
+            Err(e) => panic!("Error: {}", e),
+        }
+
+        assert_eq!(count_moves(0, &mut board), 1);
+        assert_eq!(count_moves(1, &mut board), 6);
+        assert_eq!(count_moves(2, &mut board), 264);
+        assert_eq!(count_moves(3, &mut board), 9467);
+        assert_eq!(count_moves(4, &mut board), 422333);
+        assert_eq!(count_moves(5, &mut board), 15833292);
+    }
+
+    #[test] //Making sure the number of moves is correct
+    fn move_test_fifth_pos() {
+        let board_state_fen = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
+        let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
+        let mut board: BoardState;
+
+        match board_state {
+            Ok(_) => board = board_state.unwrap(),
+            Err(e) => panic!("Error: {}", e),
+        }
+
+        assert_eq!(count_moves(0, &mut board), 1);
+        assert_eq!(count_moves(1, &mut board), 44);
+        assert_eq!(count_moves(2, &mut board), 1486);
+        assert_eq!(count_moves(3, &mut board), 62379);
+        assert_eq!(count_moves(4, &mut board), 2103487);
+    }
+
+    #[test] //Making sure the number of moves is correct
+    fn move_test_sixth_pos() {
+        let board_state_fen = "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10";
+        let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
+        let mut board: BoardState;
+
+        match board_state {
+            Ok(_) => board = board_state.unwrap(),
+            Err(e) => panic!("Error: {}", e),
+        }
+
+        assert_eq!(count_moves(0, &mut board), 1);
+        assert_eq!(count_moves(1, &mut board), 46);
+        assert_eq!(count_moves(2, &mut board), 2079);
+        assert_eq!(count_moves(3, &mut board), 89890);
+        assert_eq!(count_moves(4, &mut board), 3894594);
     }
 
     //Making sure that the correct board state is reflected 
