@@ -1,13 +1,14 @@
 use crate::piece::{Piece, PieceType};
 use crate::color::{Color};
 
-/* Position in on a board */ 
+/* Position of a square on the board */
 #[derive(PartialEq, Eq, Hash, Clone, Copy)]
 pub struct Position {
     pub row: usize,
     pub col: usize,
 }
 
+/* Direction to move */
 pub enum Direction {
     Right,
     Left,
@@ -66,6 +67,7 @@ pub struct Move {
 }
 
 impl Move {
+    //I will implement Display later, but for now I can't be asked
     pub fn to_string(self) -> String {
         match self.move_type {
             MoveType::Standard(val) => {
@@ -87,33 +89,35 @@ impl Move {
     }
 }
 
-///Struct that encapsulates the numerical position on a chessboard 
+//Struct that encapsulates the numerical position on a chessboard 
 impl Position {
-    pub fn swap(&self) -> Position {
+    pub fn swap(self) -> Position {
         Position {row: self.col, col: self.row}
     }
 
-    pub fn is_valid_position(&self) -> bool {
+    pub fn is_valid_position(self) -> bool {
         self.row >= 2 && self.row <= 9 && self.col >= 2 && self.col <= 9
     }
 
-    pub fn right(&self) -> Position {
+    //Returns the square to the right from the perspective of white
+    pub fn right(self) -> Position {
         Position{row: self.row, col: self.col + 1}
     }
-
-    pub fn left(&self) -> Position {
+    //Returns the square to the left from the perspective of white
+    pub fn left(self) -> Position {
         Position{row: self.row, col: self.col - 1}
     }
-
-    pub fn up(&self) -> Position {
+    //Returns the square to the top from the perspective of white
+    pub fn up(self) -> Position {
         Position{row: self.row - 1, col: self.col}
     }
-
-    pub fn down(&self) -> Position {
+    //Returns the square to the bottom from the perspective of white
+    pub fn down(self) -> Position {
         Position{row: self.row + 1, col: self.col}
     } 
 
-    pub fn next_position(&self, dir: &Direction) -> Position {
+    //Takes in a directiona and returns the square in that position
+    pub fn next_position(self, dir: &Direction) -> Position {
         match dir {
             Direction::Right => {
                 self.right()
@@ -142,6 +146,7 @@ impl Position {
         }
     }
 
+    //Returns the position in standard notation (i.e. a3, d4, e5)
     pub fn to_string(self) -> String {
         let mut start = String::new();
         match self.col {

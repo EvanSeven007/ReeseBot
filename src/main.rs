@@ -4,7 +4,7 @@ mod square;
 mod chess_move;
 mod board_state;
 mod move_gen;
-mod minimax;
+mod engine;
 
 use board_state::BoardState;
 use rand::seq::SliceRandom;
@@ -12,7 +12,6 @@ use crate::move_gen::gen_all_moves;
 use std::env;
 
 fn main() {
-    env::set_var("RUST_BACKTRACE", "1");
     let board_state_fen = "r3k2r/p2pqNb1/bnp1pnp1/3P4/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - - -";
     let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
     let mut board: BoardState;
@@ -25,36 +24,11 @@ fn main() {
     let active_color = board.active_color;
     board.print_board();
     let moves = gen_all_moves(&mut board, active_color);
-    let mut num_moves = 0;
-    println!("{}", moves.len());
     for mv in moves {
         let mut board_copy = board.clone();
         board_copy.make_move(&mv);
-        let num_moves_curr = count_moves(1, &board_copy);
-        num_moves += num_moves_curr;
-        println!("{} {}", mv.to_string(), num_moves_curr);
-        println!("king_w: {}, queen_w: {}, king_b: {}, queen_b: {}", board_copy.castle_rights.can_castle_white_kingside, board_copy.castle_rights.can_castle_white_queenside, board_copy.castle_rights.can_castle_black_kingside, board_copy.castle_rights.can_castle_black_queenside);
-        //board_copy.print_board();
+        board_copy.print_board();
     }
-    println!("{}", num_moves);
-}
-
-
-fn count_moves(depth: u8, board: &BoardState) -> i64 {
-    if depth == 0 {
-        return 1;
-    }
-
-    let moves = gen_all_moves(board, board.active_color);
-    let mut num_positions: i64 = 0;
-    
-    for mv in moves {
-        let board_copy = &mut board.clone();
-        board_copy.make_move(&mv);
-        num_positions += count_moves(depth - 1, board_copy);
-    }
-
-    num_positions
 }
 
 //Tests
@@ -62,6 +36,22 @@ fn count_moves(depth: u8, board: &BoardState) -> i64 {
 mod tests {
     use super::*;
 
+    fn count_moves(depth: u8, board: &BoardState) -> i64 {
+        if depth == 0 {
+            return 1;
+        }
+    
+        let moves = gen_all_moves(board, board.active_color);
+        let mut num_positions: i64 = 0;
+        
+        for mv in moves {
+            let board_copy = &mut board.clone();
+            board_copy.make_move(&mv);
+            num_positions += count_moves(depth - 1, board_copy);
+        }
+    
+        num_positions
+    }
 
     #[test] //Making sure the number of moves is correct
     fn move_test_standard_pos() {

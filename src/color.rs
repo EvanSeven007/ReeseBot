@@ -1,3 +1,4 @@
+//Color for a piece/square/player
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum Color {
     White,
@@ -5,6 +6,7 @@ pub enum Color {
 }
 
 impl Color {
+    //Opposite of White is Black and vice versa
     pub fn opposite(&self) -> Color {
         match self {
             Color::White => Color::Black,
