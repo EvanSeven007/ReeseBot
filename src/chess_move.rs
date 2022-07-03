@@ -2,7 +2,7 @@ use crate::piece::{Piece, PieceType};
 use crate::color::{Color};
 
 /* Position of a square on the board */
-#[derive(PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub struct Position {
     pub row: usize,
     pub col: usize,
@@ -21,7 +21,7 @@ pub enum Direction {
 }
 
 /* All moves are of one of three types */ 
-#[derive(Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum MoveType {
     Standard(StandardMove), //move a piece from one square to another
     Castle(CastleMove), //Castling 
@@ -30,7 +30,7 @@ pub enum MoveType {
 }
 
 /* Standard moves involve normal captures and enpassants */ 
-#[derive(Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub struct StandardMove { //enpassant is in this?
     pub before: Position, 
     pub after: Position, 
@@ -38,21 +38,21 @@ pub struct StandardMove { //enpassant is in this?
 }
 
 /* Castles are either king or queenside */
-#[derive(Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub struct CastleMove {
     pub is_kingside: bool, //Else queenside
     pub color: Color, 
 }
 
 /* Promoting a pawn */
-#[derive(Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub struct PromotionMove {
     pub before: Position,
     pub after: Position,
     pub promote_to: Piece,
 }
 
-#[derive(Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub struct EnPassantMove {
     pub before: Position,
     pub after: Position,
@@ -60,7 +60,7 @@ pub struct EnPassantMove {
 }
 
 /* A general move */
-#[derive(Clone, Copy)] 
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub struct Move {
     pub move_type: MoveType,
     pub piece_captured: Option<Piece>, 
@@ -158,11 +158,43 @@ impl Position {
             7 => start = String::from("f"),
             8 => start = String::from("g"),
             9 => start = String::from("h"),
-            _ => start = String::from("WHAT!"),
+            _ => start = String::from("Not a valid Position!!"),
         }
         let mut end = (10 - self.row).to_string();
 
         format!("{}{}", start, end)
+    }
+
+    pub fn from_string<'a>(position: String) -> Result<Position, &'a str> {
+        let position_stripped: Vec<&str> = position.split_whitespace().collect();
+        if position_stripped.len() > 1 && position_stripped[1] != " " {
+            return Err("Not a valid position -");
+        }
+        if !(position_stripped[0].len() == 2 || position_stripped[0].len() == 4) {
+            return Err("Not a valid position");
+        }
+        let mut row: usize;
+        let mut col;
+        let row_res = position_stripped[0].chars().nth(1).unwrap().to_digit(10);
+        if let Some(val) = row_res {
+            row = (10 - val) as usize;
+        } else {
+            return Err("cannot parse position");
+        }
+
+        match position_stripped[0].chars().nth(0).unwrap() {
+            'a' | 'A' => col = 2,
+            'b' | 'B' => col = 3,
+            'c' | 'C' => col = 4,
+            'd' | 'D' => col = 5,
+            'e' | 'E' => col = 6,
+            'f' | 'F' => col = 7,
+            'g' | 'G' => col = 8,
+            'h' | 'H' => col = 9,
+            _ => return Err("Index out of bounds"),
+        }
+
+        Ok(Position{row, col})
     }
 }
 
@@ -203,5 +235,63 @@ pub fn en_passant(before: Position, after: Position, en_passant_pos: Position, p
     Move {
         move_type,
         piece_captured,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*; 
+
+    #[test]
+    fn test_1() {
+        let res = Position::from_string(String::from("e1"));
+        match res {
+            Ok(val) => assert_eq!(Position{row: 9, col: 6}, val),
+            Err(e) => panic!("{}", e),
+        }
+    }
+
+    #[test]
+    fn test_2() {
+        let res = Position::from_string(String::from("h5"));
+        match res {
+            Ok(val) => assert_eq!(Position{row: 5, col: 9}, val),
+            Err(e) => panic!("{}", e),
+        }
+    }
+
+    #[test]
+    fn test_3() {
+        let res = Position::from_string(String::from("C7"));
+        match res {
+            Ok(val) => assert_eq!(Position{row: 3, col: 4}, val),
+            Err(e) => panic!("{}", e),
+        }
+    }
+    #[test]
+    fn test_4() {
+        let res = Position::from_string(String::from("CC7"));
+        match res {
+            Ok(val) => panic!("Shoudl have returned Error"),
+            Err(e) => {}
+        }
+    }
+
+    #[test]
+    fn test_5() {
+        let res = Position::from_string(String::from("C7 "));
+        match res {
+            Ok(val) => assert_eq!(Position{row: 3, col: 4}, val),
+            Err(e) => panic!("{}", e),
+        }
+    }
+
+    #[test]
+    fn test_6() {
+        let res = Position::from_string(String::from("C7 E4"));
+        match res {
+            Ok(val) => panic!("Shoudl have returned Error"),
+            Err(e) => {}
+        }
     }
 }

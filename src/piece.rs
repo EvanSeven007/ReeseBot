@@ -1,7 +1,7 @@
 use crate::color::{Color};
 
 /* Enumeration for a piece type */ 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum PieceType {
     King, 
     Queen, 
@@ -13,7 +13,7 @@ pub enum PieceType {
 }
 
 /* A piece consists of a type and a color */
-#[derive(Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub struct Piece {
     pub piece_type: PieceType,
     pub color: Color,
