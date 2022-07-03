@@ -17,14 +17,14 @@ use crate::color::{Color};
 use crate::engine::{SearchResult, find_move};
 
 fn main() {
-    println!("Hello! I am Reese Bot, a chess playing program created by Evan Stegall");
-    println!("Available Commands: ");
-    println!("MOVE square_1 square_2 will move a piece from square_1 to square_2, given the move is legal. Squares are in standard algebraic notation (i.e e4, c5)");
-    println!("You can also castle with MOVE 0-0 or MOVE 0-0-0");
-    println!("For pawn promotions, simply type MOVE square_1 square_2=(Q, B, R, N)");
+    println!("Hello! I am Reese Bot, a chess playing program created by Evan Stegall (https://github.com/EvanSeven007)");
+    println!("To play, you can either use the MOVE or RESIGN command");
+    println!("To move a piece from point A to point B, use\nMOVE before after where before, after are squares in algebraic notation (i.e. e4, d4)");
+    println!("To castle, use MOVE 0-0 or MOVE 0-0-0 for king/queen side castle respecively");
+    println!("For pawn promotions, simply type MOVE before after=(Q, B, R, N) where Q = Queen, B = Bishop, R = Rook, N = Knight");
     println!("To resign the game, type RESIGN");
     println!("");
-    let board_state_fen = "1K6/6q1/1k6/8/8/8/8/8 w - - - -";
+    let board_state_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - - -";
     let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
     let mut board: BoardState;
 
