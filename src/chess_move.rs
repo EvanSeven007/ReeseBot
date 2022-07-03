@@ -148,7 +148,7 @@ impl Position {
 
     //Returns the position in standard notation (i.e. a3, d4, e5)
     pub fn to_string(self) -> String {
-        let mut start = String::new();
+        let start: String;
         match self.col {
             2 => start = String::from("a"),
             3 => start = String::from("b"),
@@ -160,7 +160,7 @@ impl Position {
             9 => start = String::from("h"),
             _ => start = String::from("Not a valid Position!!"),
         }
-        let mut end = (10 - self.row).to_string();
+        let end = (10 - self.row).to_string();
 
         format!("{}{}", start, end)
     }
@@ -173,8 +173,8 @@ impl Position {
         if !(position_stripped[0].len() == 2 || position_stripped[0].len() == 4) {
             return Err("Not a valid position");
         }
-        let mut row: usize;
-        let mut col;
+        let row: usize;
+        let col;
         let row_res = position_stripped[0].chars().nth(1).unwrap().to_digit(10);
         if let Some(val) = row_res {
             row = (10 - val) as usize;

@@ -391,8 +391,4 @@ impl BoardState {
         }
         println!("   [a][b][c][d][e][f][g][h]");
     }
-
-    pub fn swap_color(mut self) {
-        self.active_color = self.active_color.opposite();
-    }
 }

@@ -3,7 +3,6 @@ use crate::color::*;
 use crate::chess_move::*;
 use crate::board_state::*;
 use std::collections::HashSet;
-use std::process::exit;
 
 //Generates all valid moves for a color from a given board
 pub fn gen_all_moves(board: &BoardState, color: Color) -> Vec<Move> {
@@ -257,7 +256,7 @@ pub fn generate_pawn_moves(board: &BoardState, curr_pawn: Piece, pos: &Position)
         if let Some(en_passant_pos) = board.en_passant {
             let captured = Some(Piece{piece_type: PieceType::Pawn, color: curr_pawn.color.opposite()});
             if en_passant_pos == pos.left() {
-                pawn_moves.push(en_passant(*pos, en_passant_left, en_passant_pos, captured));;
+                pawn_moves.push(en_passant(*pos, en_passant_left, en_passant_pos, captured));
             } else if en_passant_pos == pos.right() {
                 pawn_moves.push(en_passant(*pos, en_passant_right, en_passant_pos, captured));
             }

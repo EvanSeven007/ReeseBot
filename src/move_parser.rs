@@ -1,7 +1,6 @@
-use crate::chess_move::{Move, MoveType, Position, standard, castle, promotion, en_passant};
+use crate::chess_move::{Move, MoveType, Position, castle};
 use crate::piece::PieceType;
 use crate::board_state::{BoardState};
-use crate::move_gen::{gen_all_moves};
 use std::process::exit;
 
 pub fn parse_move<'a>(move_string: String, board: &BoardState, moves: Vec<Move>) -> Result<Move, &'a str> { 

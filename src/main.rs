@@ -8,13 +8,10 @@ mod engine;
 mod move_parser;
 
 use board_state::BoardState;
-use rand::seq::SliceRandom;
 use crate::move_gen::gen_all_moves;
-use std::io::{stdin,stdout,Write};
-use std::env;
 use crate::move_parser::{parse_move};
 use crate::color::{Color};
-use crate::engine::{SearchResult, find_move};
+use crate::engine::{find_move};
 
 fn main() {
     println!("Hello! I am Reese Bot, a chess playing program created by Evan Stegall (https://github.com/EvanSeven007)");
