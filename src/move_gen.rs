@@ -8,7 +8,13 @@ use std::process::exit;
 //Generates all valid moves for a color from a given board
 pub fn gen_all_moves(board: &BoardState, color: Color) -> Vec<Move> {
     /* Storing the positions of the white and black pieces */
-    let (curr_set, other_set, king_pos) = find_pieces(board, color);
+    let (curr_set, other_set, king_pos_opt) = find_pieces(board, color);
+    
+    let king_pos;
+    match king_pos_opt { //If there's no king then it got captured and therefore you cannot make any more moves
+        Some(val) => king_pos = val,
+        None => return Vec::new(),
+    }
 
     if curr_set.len() + other_set.len() == 2 {
         return Vec::new(); //Draw 
@@ -104,7 +110,7 @@ fn filter_moves(positions: Vec<Position>, board: &BoardState, curr_piece: &Piece
     )
     .collect()
 }
-pub fn find_pieces(board: &BoardState, color: Color) -> (HashSet<Position>, HashSet<Position>, Position){
+pub fn find_pieces(board: &BoardState, color: Color) -> (HashSet<Position>, HashSet<Position>, Option<Position>){
     /* Storing the positions of the white and black pieces */
     let mut curr_pieces: HashSet<Position> = HashSet::new();
     let mut other_pieces: HashSet<Position> = HashSet::new();
@@ -125,9 +131,7 @@ pub fn find_pieces(board: &BoardState, color: Color) -> (HashSet<Position>, Hash
         }
     }
 
-    let king_pos: Position = opt_king_pos.expect("Could not find the king!");
-
-    (curr_pieces, other_pieces, king_pos)
+    (curr_pieces, other_pieces, opt_king_pos)
 
 }
 

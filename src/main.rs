@@ -14,6 +14,7 @@ use std::io::{stdin,stdout,Write};
 use std::env;
 use crate::move_parser::{parse_move};
 use crate::color::{Color};
+use crate::engine::{SearchResult, find_move};
 
 fn main() {
     println!("Hello! I am Reese Bot, a chess playing program created by Evan Stegall");
@@ -23,7 +24,7 @@ fn main() {
     println!("For pawn promotions, simply type MOVE square_1 square_2=(Q, B, R, N)");
     println!("To resign the game, type RESIGN");
     println!("");
-    let board_state_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - - -";
+    let board_state_fen = "1K6/6q1/1k6/8/8/8/8/8 w - - - -";
     let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
     let mut board: BoardState;
 
@@ -53,9 +54,9 @@ fn main() {
             Ok(mv) => {
                 board.make_move(&mv);
                 board.print_board();
-                moves = gen_all_moves(&board, Color::Black);
-                if let Some(rand_move) = moves.choose(&mut rand::thread_rng()) {
-                    board.make_move(&rand_move);
+                let result = find_move(&board, 2);
+                if let Some(mv) = result.move_found {
+                    board.make_move(&mv);
                     board.print_board();
                 } else { //Black has no moves
                     if board.is_in_check(Color::Black, None) {
@@ -165,8 +166,8 @@ mod tests {
         assert_eq!(count_moves(1, &mut board), 6);
         assert_eq!(count_moves(2, &mut board), 264);
         assert_eq!(count_moves(3, &mut board), 9467);
-        //assert_eq!(count_moves(4, &mut board), 422333);
-        //assert_eq!(count_moves(5, &mut board), 15833292);
+        assert_eq!(count_moves(4, &mut board), 422333);
+        assert_eq!(count_moves(5, &mut board), 15833292);
     }
 
     #[test] //Making sure the number of moves is correct
@@ -183,8 +184,8 @@ mod tests {
         assert_eq!(count_moves(0, &mut board), 1);
         assert_eq!(count_moves(1, &mut board), 44);
         assert_eq!(count_moves(2, &mut board), 1486);
-        //assert_eq!(count_moves(3, &mut board), 62379);
-        //assert_eq!(count_moves(4, &mut board), 2103487);
+        assert_eq!(count_moves(3, &mut board), 62379);
+        assert_eq!(count_moves(4, &mut board), 2103487);
     }
 
     #[test] //Making sure the number of moves is correct
@@ -201,7 +202,7 @@ mod tests {
         assert_eq!(count_moves(0, &mut board), 1);
         assert_eq!(count_moves(1, &mut board), 46);
         assert_eq!(count_moves(2, &mut board), 2079);
-        //assert_eq!(count_moves(3, &mut board), 89890);
+        assert_eq!(count_moves(3, &mut board), 89890);
         //assert_eq!(count_moves(4, &mut board), 3894594);
     }
 

@@ -20,21 +20,21 @@ pub struct Piece {
 }
 
 impl Piece {
-    pub fn worth(self) -> i32 {
-        let mult: i32;
+    pub fn worth(self) -> f32 {
+        let mult: f32;
         
         match self.color {
-            Color::White => mult = 1,
-            Color::Black => mult = -1,
+            Color::White => mult = 1.0,
+            Color::Black => mult = -1.0,
         }
 
         match self.piece_type {
-            PieceType::King => mult * 90,
-            PieceType::Queen => mult * 9,
-            PieceType::Rook => mult * 5,
-            PieceType::Bishop | PieceType::Knight => mult * 3,
-            PieceType::Pawn => mult * 1,
-            PieceType::None => 0,
+            PieceType::King => mult * 200.0,
+            PieceType::Queen => mult * 9.0,
+            PieceType::Rook => mult * 5.0,
+            PieceType::Bishop | PieceType::Knight => mult * 3.0,
+            PieceType::Pawn => mult * 1.0,
+            PieceType::None => 0.0,
         }
     }
 }
