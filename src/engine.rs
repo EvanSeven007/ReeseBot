@@ -1,88 +1,62 @@
-use crate::board_state::BoardState;
+use crate::board_state::{BoardState};
 use crate::chess_move::{Move, Position};
 use crate::move_gen::{king_positions, gen_all_moves};
 use crate::piece::{PieceType};
 use crate::color::{Color};
-use std::f32;
+use crate::evaluation::{evaluate};
+use std::cmp::{max, min};
+use std::i32;
+use std::time::Instant;
+
+/* Inspiration draw from https://github.com/MitchelPaulin/Walleye/blob/main/src/engine.rs */
+
+const MATE_VALUE:i32 = 1000000000; //evaluation of a board state in mate
+pub const MAX_DEPTH: u8 = 50;
+type MoveList = [Option<Move>; MAX_DEPTH as usize];
+
+pub struct Search {
+    pub nodes_searched: u32, 
+    pub pv_moves: MoveList,
+    pub current_line: MoveList, //current line being searched
+}
 
 pub struct SearchResult {
-    pub score: f32,
+    pub score: i32,
     pub move_found: Option<Move>,
 }
 
-//Returns a simple evaluation of the board state
-fn evaluate(board: &BoardState) -> f32 {
-    let mut eval: f32 = 0.0;
-    //We will be taking account of pawn mobility, so we will update these every time we hit a pawn. 
-    let mut pawn_pos: Position; //position of a pawn
-    let mut behind: Position; //position behind pawn_pos
-    let mut in_front: Position; //position in front of pawn_pos
-    let mut mult: f32; //Multiplier (-1 or 1) depending on black/white
-    for row in 2..10 {
-        for col in 2..10 {
-            let square = board.squares[row][col];
-            if let Some(piece) = square.piece {
-                eval += piece.worth();
-                if piece.piece_type == PieceType::Pawn {
-                    pawn_pos = Position{row, col};
-                    match piece.color {
-                        Color::White => {
-                            behind = pawn_pos.down();
-                            in_front = pawn_pos.up();
-                            mult = -1.0;
-                        },
-                        Color::Black => {
-                            behind = pawn_pos.up();
-                            in_front = pawn_pos.down();
-                            mult = 1.0;
-                        },
-                    }
-
-                    //Doubled pawns
-
-                    if let Some(behind_piece) = board.squares[behind.row][behind.col].piece {
-                        if behind_piece.piece_type == PieceType::Pawn && behind_piece.color == piece.color {
-                            eval += mult;
-                        }
-                    }
-
-                    //Blocked pawns
-                    if let Some(in_front_piece) = board.squares[in_front.row][in_front.col].piece {
-                        if in_front_piece.piece_type == PieceType::Pawn && in_front_piece.color != piece.color {
-                            eval += mult * 0.5;
-                        }
-                    }
-
-                    //Isolated pawns
-                    let mut is_isolated = true;
-                    for pos in king_positions(pawn_pos) {
-                        if let Some(neighbor) = board.squares[pos.row][pos.col].piece {
-                            if neighbor.piece_type == PieceType::Pawn && neighbor.color == piece.color {
-                                is_isolated = false;
-                            }
-                        }
-                    }
-                    if is_isolated {
-                        eval += mult * 0.5;
-                    }
-                }
-            }
+impl Search {
+    pub fn new() -> Search {
+        Search {
+            nodes_searched: 0,
+            pv_moves: [None; MAX_DEPTH as usize],
+            current_line: [None; MAX_DEPTH as usize],
         }
     }
 
-    //Mobility
-    let mut board_copy = board.clone();
-    board_copy.active_color = Color::White;
-    eval += 0.1 * (gen_all_moves(&board_copy, Color::White).len() as f32);
-    board_copy.active_color = Color::Black;
-    eval -= 0.1 * (gen_all_moves(&board_copy, Color::Black).len() as f32);
+    pub fn increment_nodes_searched(&mut self) {
+        self.nodes_searched += 1;
+    }
 
-    eval 
+    pub fn insert_into_current_line(&mut self, ply: i32, mv: &Move) {
+        self.current_line[ply as usize] = Some(*mv);
+    }
+
+    pub fn set_principle_variation(&mut self) {
+        self.pv_moves = self.current_line.clone();
+    }
+
+    pub fn reset_search(&mut self) {
+        self.nodes_searched = 0;
+        self.current_line = [None; MAX_DEPTH as usize];
+    }
 }
 
-fn quiesce(mut alpha: f32, beta: f32, board: &BoardState) -> f32 {
-    let init_eval: f32 = evaluate(board);
+fn quiesce(mut alpha: i32, mut beta: i32, search: &mut Search, board: &BoardState) -> i32 {
+    let init_eval: i32 = evaluate(board);
     
+    search.increment_nodes_searched();
+
     if init_eval >= beta {
         return beta;
     }
@@ -90,7 +64,7 @@ fn quiesce(mut alpha: f32, beta: f32, board: &BoardState) -> f32 {
         alpha = init_eval;
     }
 
-    let mut score: f32;
+    let mut score: i32;
     let mut board_copy;
     let active_color = board.active_color;
     for mv in gen_all_moves(board, active_color) {
@@ -98,7 +72,7 @@ fn quiesce(mut alpha: f32, beta: f32, board: &BoardState) -> f32 {
             Some(_) => {
                 board_copy = board.clone();
                 board_copy.make_move(&mv);
-                score = -1.0 * quiesce(-1.0 * beta, -1.0 * alpha, &board_copy);
+                score = -1 * quiesce(-1 * beta, -1 * alpha, search, &board_copy);
                 if score >= beta {
                     return beta;
                 }
@@ -114,53 +88,122 @@ fn quiesce(mut alpha: f32, beta: f32, board: &BoardState) -> f32 {
     return alpha;
 }
 
-fn negamax(mut alpha: f32, beta: f32, depth_left: i32, board: &BoardState) -> f32 {
-    let active_color = board.active_color;
-    let moves = gen_all_moves(board, active_color);
-    let mut score: f32;
+fn alpha_beta(mut alpha: i32, mut beta: i32, mut depth: u8, search: &mut Search, ply: i32, board: &BoardState) -> i32 {
+    search.increment_nodes_searched();
+    let ply_index: usize = ply as usize;
 
-    if moves.len() == 0 { //game over
+    if depth == 0 {
         let active_color = board.active_color;
         if board.is_in_check(active_color, None) {
-            return f32::MIN; //Game over by checkmate
+            depth += 1;
         } else {
-            return 0.0; //draw
+            return quiesce(alpha, beta, search, board);
         }
     }
 
-    if depth_left == 0 {
-        return quiesce(alpha, beta, board);
+    alpha = max(alpha, ply - MATE_VALUE);
+    beta = min(beta, ply + MATE_VALUE);
+
+    if alpha >= beta {
+        return alpha;
     }
 
-    for mv in moves {
-        let mut board_copy = board.clone();
-        board_copy.make_move(&mv);
-        score = -1.0 * negamax(-1.0 * beta, -1.0 * alpha, depth_left - 1, &board_copy);
-        if score >= beta {
-            return beta; //fail hard beta cutofff
-        }
-
-        if score > alpha {
-            alpha = score;
-        }
-    }
-    return alpha; 
-}
-
-pub fn find_move(board: &BoardState, depth: i32) -> SearchResult {
-    let mut result = SearchResult{score: f32::MIN, move_found: None};
-    let mut score;
     let active_color = board.active_color;
-    for mv in gen_all_moves(board, active_color) {
-        let mut board_copy = board.clone();
-        board_copy.make_move(&mv);
-        score = negamax(f32::MIN, f32::MAX, depth, &board_copy);
-        if score > result.score {
-            result.score = score;
-            result.move_found = Some(mv);
+    let mut moves = gen_all_moves(board, active_color);
+
+    //Game over
+    if moves.len() == 0 {
+        if board.is_in_check(active_color, None) {
+            return -1 * (MATE_VALUE - ply); //Checkmate
+        } else {
+            return 0; //Draw by stalemate
+        }
+    }
+
+    let mut potential_best_score: i32 = i32::MIN;
+    let mut other_moves: Vec<Move> = Vec::new();
+    //Calculating on principal variation first
+    for mv in &mut moves {
+        if board.last_move == search.pv_moves[ply_index] {
+            let mut board_copy = board.clone();
+            board_copy.make_move(mv);
+            search.insert_into_current_line(ply, mv); //Ply or ply + 1?
+            potential_best_score = alpha_beta(-1 * alpha, -1 * beta, depth - 1, search, ply + 1, &board_copy);
+            if potential_best_score > alpha {
+                if potential_best_score >= beta {
+                    return potential_best_score
+                }
+                search.set_principle_variation();
+                alpha = potential_best_score;
+            }
+        } else {
+            other_moves.push(*mv);
         }
     }
     
+    for mv in &mut other_moves {
+        search.insert_into_current_line(ply, mv);
+        let mut board_copy = board.clone();
+        board_copy.make_move(mv);
+        let mut score = alpha_beta(-1 * beta, -1 * alpha, depth - 1, search, ply + 1, &board_copy);
+        if -1 * score > potential_best_score {
+            if score >= beta {
+                return score;
+            }
+            search.set_principle_variation();
+            potential_best_score = score;
+        }
+
+    }
+
+    potential_best_score
+}
+
+pub fn find_move(board: &BoardState) -> SearchResult {
+    let mut result = SearchResult{score: i32::MIN, move_found: None};
+    let mut depth = 1;
+    let mut ply = 0;
+    let mut search = Search::new();
+
+    let active_color = board.active_color;
+    let mut moves = gen_all_moves(board, active_color);
+    let mut alpha: i32 = -100000;
+    let mut beta: i32 = 100000;
+    let start = Instant::now();
+
+    while depth < MAX_DEPTH {
+        println!("trying at depth: {}", depth);
+        search.reset_search();
+
+        for mv in &moves {
+            //Ending after 20 seconds
+            if start.elapsed().as_secs() > 20 {
+                match result.move_found {
+                    Some(_) => return result,
+                    None => {
+                        result.move_found = Some(moves[0]);
+                        return result;
+                    }
+                }
+            }
+            let mut board_copy = board.clone();
+            board_copy.make_move(mv);
+            let eval = -1 * alpha_beta(-1 * beta, -1 * alpha, depth - 1, &mut search, ply + 1, &board_copy);
+
+            search.insert_into_current_line(ply, mv);
+            if eval > alpha {
+                alpha = eval;
+                if eval > result.score {
+                    result.move_found = Some(*mv);
+                    result.score = eval;
+                }
+                search.set_principle_variation();
+            }
+        }
+
+        depth += 1;
+    }
+    //
     result
 }
 
@@ -169,7 +212,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn eval_1() {
+    fn sanity_check() {
         let board_state_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - - -";
         let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
         let mut board: BoardState;
@@ -179,6 +222,20 @@ mod tests {
             Err(e) => panic!("Error: {}", e),
         }
 
-        assert_eq!(evaluate(&board), 0.0);
     }
+
+    #[test]
+    fn sanity_check2() {
+        let board_state_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - - -";
+        let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
+        let mut board: BoardState;
+    
+        match board_state {
+            Ok(_) => board = board_state.unwrap(),
+            Err(e) => panic!("Error: {}", e),
+        }
+
+    }
+
+
 }

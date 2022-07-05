@@ -21,6 +21,7 @@ pub struct BoardState {
     pub active_color: Color, 
     pub castle_rights: CastleRights,
     pub en_passant: Option<Position>,
+    pub last_move: Option<Move>
 }
 
 impl BoardState { 
@@ -124,7 +125,8 @@ impl BoardState {
             return Err("fen string enpassant malformed!")
         }
 
-        Ok(BoardState { squares, active_color, castle_rights, en_passant})
+
+        Ok(BoardState { squares, active_color, castle_rights, en_passant, last_move: None})
     }
 
     //Creates a Piece from a fen string representation of said piece
@@ -165,6 +167,7 @@ impl BoardState {
 
     /* Updates a board state given a move, which was already been prechecked to be valid */
     pub fn make_move(&mut self, current_move: &Move) {
+        self.last_move = Some(*current_move);
         let move_type: &MoveType = &current_move.move_type;
         self.en_passant = None; //Reseting en_passant square to None after every move, this will be updated later depending on move
         
