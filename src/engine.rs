@@ -8,10 +8,11 @@ use std::cmp::{max, min};
 use std::i32;
 use std::time::Instant;
 
-/* Inspiration draw from https://github.com/MitchelPaulin/Walleye/blob/main/src/engine.rs */
+/* Everything drawn from https://www.chessprogramming.org/Main_Page */
+/* Search struct idea draw from https://github.com/MitchelPaulin/Walleye/blob/main/src/engine.rs */
 
 const MATE_VALUE:i32 = 1000000000; //evaluation of a board state in mate
-pub const MAX_DEPTH: u8 = 50;
+pub const MAX_DEPTH: u8 = 25;
 type MoveList = [Option<Move>; MAX_DEPTH as usize];
 
 pub struct Search {
@@ -177,7 +178,7 @@ pub fn find_move(board: &BoardState) -> SearchResult {
 
         for mv in &moves {
             //Ending after 20 seconds
-            if start.elapsed().as_secs() > 20 {
+            if start.elapsed().as_secs() > 200 {
                 match result.move_found {
                     Some(_) => return result,
                     None => {
