@@ -1,6 +1,6 @@
 # ReeseBot
 
-This is a chess engine built entirely in Rust, using classic minimax with alpha-beta pruning and a quiescience search. 
+This is a chess engine built entirely in Rust, using classic minimax with alpha-beta pruning and iterative deepening with a quiescience search. 
 
 
 ## To Play
