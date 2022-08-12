@@ -14,7 +14,6 @@ pub fn parse_move<'a>(move_string: String, board: &BoardState, moves: Vec<Move>)
         },
         "MOVE" | "move" => {
             if strings.len() == 2 {
-                println!("got here");
                 //Handling castle moves
                 match strings[1] {
                     "0-0" | "O-O" => {

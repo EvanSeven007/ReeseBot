@@ -9,11 +9,12 @@ use std::i32;
 use std::time::Instant;
 
 /* Everything drawn from https://www.chessprogramming.org/Main_Page */
-/* Search struct idea draw from https://github.com/MitchelPaulin/Walleye/blob/main/src/engine.rs */
+/* Search struct idea drawm from https://github.com/MitchelPaulin/Walleye/blob/main/src/engine.rs */
 
 const MATE_VALUE:i32 = 1000000000; //evaluation of a board state in mate
-pub const MAX_DEPTH: u8 = 25;
-type MoveList = [Option<Move>; MAX_DEPTH as usize];
+pub const MAX_DEPTH: u16 = 25;
+pub const ARRAY_SIZE: usize =  ((MAX_DEPTH * MAX_DEPTH + MAX_DEPTH)/2 + 1) as usize;
+type MoveList = [Option<Move>; ARRAY_SIZE];
 
 pub struct Search {
     pub nodes_searched: u32, 
@@ -30,8 +31,8 @@ impl Search {
     pub fn new() -> Search {
         Search {
             nodes_searched: 0,
-            pv_moves: [None; MAX_DEPTH as usize],
-            current_line: [None; MAX_DEPTH as usize],
+            pv_moves: [None; ARRAY_SIZE],
+            current_line: [None; ARRAY_SIZE],
         }
     }
 
@@ -49,7 +50,7 @@ impl Search {
 
     pub fn reset_search(&mut self) {
         self.nodes_searched = 0;
-        self.current_line = [None; MAX_DEPTH as usize];
+        self.current_line = [None; ARRAY_SIZE];
     }
 }
 
@@ -89,7 +90,7 @@ fn quiesce(mut alpha: i32, mut beta: i32, search: &mut Search, board: &BoardStat
     return alpha;
 }
 
-fn alpha_beta(mut alpha: i32, mut beta: i32, mut depth: u8, search: &mut Search, ply: i32, board: &BoardState) -> i32 {
+fn alpha_beta(mut alpha: i32, mut beta: i32, mut depth: u16, search: &mut Search, ply: i32, board: &BoardState) -> i32 {
     search.increment_nodes_searched();
     let ply_index: usize = ply as usize;
 
@@ -162,7 +163,7 @@ fn alpha_beta(mut alpha: i32, mut beta: i32, mut depth: u8, search: &mut Search,
 
 pub fn find_move(board: &BoardState) -> SearchResult {
     let mut result = SearchResult{score: i32::MIN, move_found: None};
-    let mut depth = 1;
+    let mut depth = 2;
     let mut ply = 0;
     let mut search = Search::new();
 
@@ -171,17 +172,19 @@ pub fn find_move(board: &BoardState) -> SearchResult {
     let mut alpha: i32 = -100000;
     let mut beta: i32 = 100000;
     let start = Instant::now();
-
+    let mut nodes_searched = 0;
     while depth < MAX_DEPTH {
-        println!("trying at depth: {}", depth);
+        nodes_searched += search.nodes_searched;
+        println!("Trying Depth: {}, Nodes Searched: {}", depth, nodes_searched);
         search.reset_search();
 
         for mv in &moves {
-            //Ending after 20 seconds
-            if start.elapsed().as_secs() > 200 {
+            //Ending after two minutes seconds
+            if start.elapsed().as_secs() > 1 {
                 match result.move_found {
                     Some(_) => return result,
                     None => {
+                        println!("no movef found!");
                         result.move_found = Some(moves[0]);
                         return result;
                     }
@@ -189,15 +192,16 @@ pub fn find_move(board: &BoardState) -> SearchResult {
             }
             let mut board_copy = board.clone();
             board_copy.make_move(mv);
+            //-1 or positive one??
             let eval = -1 * alpha_beta(-1 * beta, -1 * alpha, depth - 1, &mut search, ply + 1, &board_copy);
-
+    
             search.insert_into_current_line(ply, mv);
             if eval > alpha {
-                alpha = eval;
                 if eval > result.score {
                     result.move_found = Some(*mv);
                     result.score = eval;
                 }
+                alpha = eval;
                 search.set_principle_variation();
             }
         }

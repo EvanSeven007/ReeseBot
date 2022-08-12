@@ -1,0 +1,63 @@
+1) Test up, down, left, right functioanlity first. 
+2) Remake Rook/Bishop/Queen/King/Pawn moves to suit that style. 
+3) EnumDirection
+4) fn move_in_direction(Position, Direction, color, Board) //Works for bishop and rook moves 
+5)    while pos = Position.go(direction) is not occupied and pos.is_valid() {
+            add_pos to valid positions
+        is !pos.is_valid()
+            return 
+        if let p = Some(self.squares[pos.row][pos.col].piece) && p.color == color.opposite()
+            add pos to valid positions
+    return valid positions
+}
+6) fn move_king(pos, color) {
+    valid_positions = [pos.up(), pos.down,...]
+    valid_postions.into_iter()
+    .filter(|pos| !pos.is_occupied() || pos.piece.color == opposite())
+}
+
+1) First/generating castle moves
+2) if black, check left,left, right,right,right
+2) if white check left chec'
+
+### MOVE GENERATION
+#implement castle
+#implement turning off boolean values on king-rook-moves (if king_before = default value, then castle is off, if rook_before = default queen, quene then etc )
+#test move generation
+#refactor move generation
+#implement is_in_check
+#test move generation
+
+### Move parser from string
+###Use Result Enum
+### Use this to test games
+### This seems to be a bit hard and out of reach for now, let's try and make the zobrist hashing and basic search
+
+##Zobrist
+
+##Work on the basic alpha beta pruning algo, and then make it better from there
+
+#MINIMAX
+1) Implement basic eval function 
+2) impleent basic MINIMAX
+3) implement alpha beta pruning
+4) implement better evaluation function
+5) implement quiesence search
+6) optional implement negamax
+7) optional implement move orderings
+
+5) Compile down to webassembly
+6) Test with terminal
+7) Build JS interface and put it on website
+
+###
+Test move generation a bit further
+Make a better evaluation function
+implement negamax with alpha beta pruning
+Quickly do all of the things above
+Implement a MOVE E4 to E5 for example
+refactor, release version 1.0 ###THEN use rest of summer 
+
+There in lies the rub, theres a proglemw ith castles. test on some basic positions later
+
+//Figure out current issue, test with all of the positions from the site, refactor like hell!
