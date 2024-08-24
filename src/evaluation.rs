@@ -1,12 +1,12 @@
-use crate::board_state::{BoardState};
+use crate::board_state::BoardState;
 use crate::piece::{Piece, PieceType};
-use crate::color::{Color};
+use crate::color::Color;
 
 /*
     Evaluation function based on https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function (inspired by the walleye chess bot)
 */
 
-const mg_pawn_table: [[i32; 8]; 8] = [
+const MG_PAWN_TABLE: [[i32; 8]; 8] = [
   [  0,   0,   0,   0,   0,   0,  0,   0],
   [ 98, 134,  61,  95,  68, 126, 34, -11],
   [ -6,   7,  26,  31,  65,  56, 25, -20],
@@ -17,7 +17,7 @@ const mg_pawn_table: [[i32; 8]; 8] = [
   [  0,   0,   0,   0,   0,   0,  0,   0]
 ];
 
-const eg_pawn_table: [[i32; 8]; 8] = [
+const EG_PAWN_TABLE: [[i32; 8]; 8] = [
   [  0,   0,   0,   0,   0,   0,   0,   0],
   [178, 173, 158, 134, 147, 132, 165, 187],
   [ 94, 100,  85,  67,  56,  53,  82,  84],
@@ -28,7 +28,7 @@ const eg_pawn_table: [[i32; 8]; 8] = [
   [  0,   0,   0,   0,   0,   0,   0,   0],
 ];
 
-const mg_knight_table: [[i32; 8]; 8] = [
+const MG_KNIGHT_TABLE: [[i32; 8]; 8] = [
   [-167, -89, -34, -49,  61, -97, -15, -107],
   [ -73, -41,  72,  36,  23,  62,   7,  -17],
   [ -47,  60,  37,  65,  84, 129,  73,   44],
@@ -39,7 +39,7 @@ const mg_knight_table: [[i32; 8]; 8] = [
   [-105, -21, -58, -33, -17, -28, -19,  -23],
 ];
 
-const eg_knight_table: [[i32; 8]; 8] = [
+const EG_KNIGHT_TABLE: [[i32; 8]; 8] = [
   [-58, -38, -13, -28, -31, -27, -63, -99],
   [-25,  -8, -25,  -2,  -9, -25, -24, -52],
   [-24, -20,  10,   9,  -1,  -9, -19, -41],
@@ -50,7 +50,7 @@ const eg_knight_table: [[i32; 8]; 8] = [
   [-29, -51, -23, -15, -22, -18, -50, -64],
 ];
 
-const mg_bishop_table: [[i32; 8]; 8] = [
+const MG_BISHOP_TABLE: [[i32; 8]; 8] = [
   [-29,   4, -82, -37, -25, -42,   7,  -8],
   [-26,  16, -18, -13,  30,  59,  18, -47],
   [-16,  37,  43,  40,  35,  50,  37,  -2],
@@ -61,7 +61,7 @@ const mg_bishop_table: [[i32; 8]; 8] = [
   [-33,  -3, -14, -21, -13, -12, -39, -21],
 ];
 
-const eg_bishop_table: [[i32; 8]; 8] = [
+const EG_BISHOP_TABLE: [[i32; 8]; 8] = [
   [-14, -21, -11,  -8, -7,  -9, -17, -24],
   [ -8,  -4,   7, -12, -3, -13,  -4, -14],
   [  2,  -8,   0,  -1, -2,   6,   0,   4],
@@ -72,7 +72,7 @@ const eg_bishop_table: [[i32; 8]; 8] = [
   [-23,  -9, -23,  -5, -9, -16,  -5, -17],
 ];
 
-const mg_rook_table: [[i32; 8]; 8] = [
+const MG_ROOK_TABLE: [[i32; 8]; 8] = [
   [ 32,  42,  32,  51, 63,  9,  31,  43],
   [ 27,  32,  58,  62, 80, 67,  26,  44],
   [ -5,  19,  26,  36, 17, 45,  61,  16],
@@ -83,7 +83,7 @@ const mg_rook_table: [[i32; 8]; 8] = [
   [-19, -13,   1,  17, 16,  7, -37, -26],
 ];
 
-const eg_rook_table: [[i32; 8]; 8] = [
+const EG_ROOK_TABLE: [[i32; 8]; 8] = [
   [13, 10, 18, 15, 12,  12,   8,   5],
   [11, 13, 13, 11, -3,   3,   8,   3],
   [ 7,  7,  7,  5,  4,  -3,  -5,  -3],
@@ -94,7 +94,7 @@ const eg_rook_table: [[i32; 8]; 8] = [
   [-9,  2,  3, -1, -5, -13,   4, -20],
 ];
 
-const mg_queen_table: [[i32; 8]; 8] = [
+const MG_QUEEN_TABLE: [[i32; 8]; 8] = [
   [-28,   0,  29,  12,  59,  44,  43,  45],
   [-24, -39,  -5,   1, -16,  57,  28,  54],
   [-13, -17,   7,   8,  29,  56,  47,  57],
@@ -105,7 +105,7 @@ const mg_queen_table: [[i32; 8]; 8] = [
   [ -1, -18,  -9,  10, -15, -25, -31, -50],
 ];
 
-const eg_queen_table: [[i32; 8]; 8] = [
+const EG_QUEEN_TABLE: [[i32; 8]; 8] = [
   [ -9,  22,  22,  27,  27,  19,  10,  20],
   [-17,  20,  32,  41,  58,  25,  30,   0],
   [-20,   6,   9,  49,  47,  35,  19,   9],
@@ -116,7 +116,7 @@ const eg_queen_table: [[i32; 8]; 8] = [
   [-33, -28, -22, -43,  -5, -32, -20, -41],
 ];
 
-const mg_king_table: [[i32; 8]; 8] = [
+const MG_KING_TABLE: [[i32; 8]; 8] = [
   [-65,  23,  16, -15, -56, -34,   2,  13],
   [ 29,  -1, -20,  -7,  -8,  -4, -38, -29],
   [ -9,  24,   2, -16, -20,   6,  22, -22],
@@ -127,7 +127,7 @@ const mg_king_table: [[i32; 8]; 8] = [
   [-15,  36,  12, -54,   8, -28,  24,  14],
 ];
 
-const eg_king_table: [[i32; 8]; 8] = [
+const EG_KING_TABLE: [[i32; 8]; 8] = [
   [-74, -35, -18, -18, -11,  15,   4, -17],
   [-12,  17,  14,  17,  17,  38,  23,  11],
   [ 10,  17,  23,  15,  20,  45,  44,  13],
@@ -140,24 +140,24 @@ const eg_king_table: [[i32; 8]; 8] = [
 
 fn get_mg_table(piece: Piece) -> &'static [[i32; 8]; 8] {
     match piece.piece_type {
-        PieceType::Pawn => &mg_pawn_table,
-        PieceType::Knight => &mg_knight_table,
-        PieceType::Bishop => &mg_bishop_table,
-        PieceType::Rook => &mg_rook_table,
-        PieceType::Queen => &mg_queen_table,
-        PieceType::King => &mg_king_table,
+        PieceType::Pawn => &MG_PAWN_TABLE,
+        PieceType::Knight => &MG_KNIGHT_TABLE,
+        PieceType::Bishop => &MG_BISHOP_TABLE,
+        PieceType::Rook => &MG_ROOK_TABLE,
+        PieceType::Queen => &MG_QUEEN_TABLE,
+        PieceType::King => &MG_KING_TABLE,
         PieceType::None => panic!("something went wrong"),
     }
 }
 
 fn get_eg_table(piece:Piece) -> &'static [[i32; 8]; 8] {
     match piece.piece_type {
-        PieceType::Pawn => &eg_pawn_table,
-        PieceType::Knight => &eg_knight_table,
-        PieceType::Bishop => &eg_bishop_table,
-        PieceType::Rook => &eg_rook_table,
-        PieceType::Queen => &eg_queen_table,
-        PieceType::King => &eg_king_table,
+        PieceType::Pawn => &EG_PAWN_TABLE,
+        PieceType::Knight => &EG_KNIGHT_TABLE,
+        PieceType::Bishop => &EG_BISHOP_TABLE,
+        PieceType::Rook => &EG_ROOK_TABLE,
+        PieceType::Queen => &EG_QUEEN_TABLE,
+        PieceType::King => &EG_KING_TABLE,
         PieceType::None => panic!("something went wrong"),
     }
 }
@@ -202,7 +202,7 @@ pub fn evaluate(board: &BoardState) -> i32 {
     let mut white_mg = 0;
     let mut black_mg = 0;
     let mut white_eg = 0;
-    let mut black_eg = 0;
+    let black_eg = 0;
     let mut game_phase = 0;
 
     for row in 2..10 {
@@ -245,18 +245,19 @@ pub fn evaluate(board: &BoardState) -> i32 {
 
 mod tests {
     use super::*;
+    use super::evaluate;
 
     #[test]
     fn test_standard_eval() {
-        let board_state_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - - -";
-        let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
-        let mut board: BoardState;
+      let board_state_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - - -";
+      let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
+      let mut board: BoardState;
     
-        match board_state {
-            Ok(_) => board = board_state.unwrap(),
-            Err(e) => panic!("Error: {}", e),
-        }
-        
-        assert_eq!(evaluation(&board), 0);
+      match board_state {
+        Ok(_) => board = board_state.unwrap(),
+        Err(e) => panic!("Error: {}", e),
+      }
+      
+      assert_eq!(evaluate(&board), 0);
     }
 }

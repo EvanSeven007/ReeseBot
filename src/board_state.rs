@@ -4,7 +4,7 @@ use crate::piece::*;
 use crate::color::*;
 use crate::chess_move::*;
 use crate::move_gen::{knight_positions, king_positions};
-use num::{abs};
+use num::abs;
 
 ///Bools that describe which side can castle at any given point in time
 #[derive(Clone, Copy)]

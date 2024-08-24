@@ -10,9 +10,9 @@ mod evaluation;
 
 use board_state::BoardState;
 use crate::move_gen::gen_all_moves;
-use crate::move_parser::{parse_move};
-use crate::color::{Color};
-use crate::engine::{find_move};
+use crate::move_parser::parse_move;
+use crate::color::Color;
+use crate::engine::find_move;
 use std::env;
 
 fn main() {
@@ -23,7 +23,7 @@ fn main() {
     println!("For pawn promotions, simply type MOVE before after=(Q, B, R, N) where Q = Queen, B = Bishop, R = Rook, N = Knight");
     println!("To resign the game, type RESIGN");
     println!("");
-    let board_state_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b - - - -";
+    let board_state_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - - -";
     let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
     let mut board: BoardState;
 

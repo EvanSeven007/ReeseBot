@@ -1,5 +1,5 @@
 use crate::piece::{Piece, PieceType};
-use crate::color::{Color};
+use crate::color::Color;
 
 /* Position of a square on the board */
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
