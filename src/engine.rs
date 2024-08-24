@@ -5,6 +5,8 @@ use crate::move_gen::gen_all_moves;
 use std::cmp::{max, min};
 use std::i32;
 use std::time::Instant;
+use simple_logger::SimpleLogger;
+use log::{info, debug};
 
 /* Everything drawn from https://www.chessprogramming.org/Main_Page */
 /* Search struct idea drawm from https://github.com/MitchelPaulin/Walleye/blob/main/src/engine.rs */
@@ -173,7 +175,7 @@ pub fn find_move(board: &BoardState) -> SearchResult {
     let mut nodes_searched = 0;
     while depth < MAX_DEPTH {
         nodes_searched += search.nodes_searched;
-        println!("Trying Depth: {}, Nodes Searched: {}", depth, nodes_searched);
+        debug!("Trying Depth: {}, Nodes Searched: {}", depth, nodes_searched);
         search.reset_search();
 
         for mv in &moves {

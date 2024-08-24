@@ -13,16 +13,19 @@ use crate::move_gen::gen_all_moves;
 use crate::move_parser::parse_move;
 use crate::color::Color;
 use crate::engine::find_move;
+use simple_logger::SimpleLogger;
+use log::{info};
 use std::env;
 
 fn main() {
-    println!("Hello! I am Reese Bot, a chess playing program created by Evan Stegall (https://github.com/EvanSeven007)");
-    println!("To play, you can either use the MOVE or RESIGN command");
-    println!("To move a piece from point A to point B, use\nMOVE before after where before, after are squares in algebraic notation (i.e. e4, d4)");
-    println!("To castle, use MOVE 0-0 or MOVE 0-0-0 for king/queen side castle respecively");
-    println!("For pawn promotions, simply type MOVE before after=(Q, B, R, N) where Q = Queen, B = Bishop, R = Rook, N = Knight");
-    println!("To resign the game, type RESIGN");
-    println!("");
+    SimpleLogger::new().without_timestamps().init().unwrap();
+    info!("Hello! I am Reese Bot, a chess playing program created by Evan Stegall (https://github.com/EvanSeven007)");
+    info!("To play, you can either use the MOVE or RESIGN command");
+    info!("To move a piece from point A to point B, use\nMOVE before after where before, after are squares in algebraic notation (i.e. e4, d4)");
+    info!("To castle, use MOVE 0-0 or MOVE 0-0-0 for king/queen side castle respecively");
+    info!("For pawn promotions, simply type MOVE before after=(Q, B, R, N) where Q = Queen, B = Bishop, R = Rook, N = Knight");
+    info!("To resign the game, type RESIGN");
+    info!("");
     let board_state_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - - -";
     let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
     let mut board: BoardState;
@@ -39,9 +42,9 @@ fn main() {
         moves = gen_all_moves(&board, Color::White);
         if moves.len() == 0 {
             if board.is_in_check(Color::White, None) {
-                println!("Black has won the game");
+                info!("Black has won the game");
             } else {
-                println!("Game over by draw");
+                info!("Game over by draw");
             }
             break;
         }
@@ -56,7 +59,7 @@ fn main() {
                         board.print_board();
                     },
                     Err(e) => {
-                        println!("Error: {}", e);
+                        info!("Error: {}", e);
                     }
                 }
             },
@@ -67,9 +70,9 @@ fn main() {
                     board.print_board();
                 } else { //Black has no moves
                     if board.is_in_check(Color::Black, None) {
-                        println!("White has won the game");
+                        info!("White has won the game");
                     } else {
-                        println!("Game over by draw");
+                        info!("Game over by draw");
                     }
                     break;
                 }
