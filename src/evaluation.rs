@@ -208,7 +208,7 @@ pub fn evaluate(board: &BoardState) -> i32 {
     let mut game_phase = 0;
     let START = 2;
     let END = 10;
-    println!("Evaluating board");
+
     for row in START..END {
         for col in START..END {
             if let Some(piece) = board.squares[row][col].piece {
@@ -229,9 +229,7 @@ pub fn evaluate(board: &BoardState) -> i32 {
 
     let mg_score;
     let eg_score;
-    
-    println!("White mg: {}, Black mg: {}", white_mg, black_mg);
-    println!("White eg: {}, Black eg: {}", white_eg, black_eg);
+  
     match board.active_color {
         Color::White => {
             mg_score = white_mg - black_mg;
