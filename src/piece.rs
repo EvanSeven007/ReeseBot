@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::color::{Color};
 
 /* Enumeration for a piece type */ 
@@ -36,5 +38,23 @@ impl Piece {
             PieceType::Pawn => mult * 1.0,
             PieceType::None => 0.0,
         }
+    }
+}
+
+impl fmt::Debug for Piece {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let piece_type_s: &str = match self.piece_type {
+            PieceType::King => "King",
+            PieceType::Queen => "Queen",
+            PieceType::Bishop => "Bishop",
+            PieceType::Knight => "Knight",
+            PieceType::Rook => "Rook",
+            PieceType::Pawn => "Pawn",
+            PieceType::None => "None",
+        };
+        f.debug_struct("Piece")
+            .field("piece_type", &piece_type_s)
+            .field("color", &self.color)
+            .finish()
     }
 }

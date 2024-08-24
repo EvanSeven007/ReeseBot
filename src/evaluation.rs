@@ -1,3 +1,5 @@
+use log::{debug, info};
+
 use crate::board_state::BoardState;
 use crate::piece::{Piece, PieceType};
 use crate::color::Color;
@@ -202,21 +204,23 @@ pub fn evaluate(board: &BoardState) -> i32 {
     let mut white_mg = 0;
     let mut black_mg = 0;
     let mut white_eg = 0;
-    let black_eg = 0;
+    let mut black_eg = 0;
     let mut game_phase = 0;
-
-    for row in 2..10 {
-        for col in 2..10 {
+    let START = 2;
+    let END = 10;
+    println!("Evaluating board");
+    for row in START..END {
+        for col in START..END {
             if let Some(piece) = board.squares[row][col].piece {
                 game_phase += get_game_phase_val(piece);
                 match piece.color {
                     Color::White => {
-                        white_mg += get_mg_table(piece)[row - 2][col - 2] + get_mg_piece_val(piece);
-                        white_eg += get_eg_table(piece)[row - 2][col - 2] + get_eg_piece_val(piece);
+                        white_mg += get_mg_table(piece)[row - START][col - START] + get_mg_piece_val(piece);
+                        white_eg += get_eg_table(piece)[row - START][col - START] + get_eg_piece_val(piece);
                     },
                     Color::Black => {
-                        black_mg += get_mg_table(piece)[9 - row][col - 2] + get_mg_piece_val(piece);
-                        black_mg += get_eg_table(piece)[9 - row][col - 2] + get_eg_piece_val(piece);
+                        black_mg += get_mg_table(piece)[9 - row][col - START] + get_mg_piece_val(piece);
+                        black_eg += get_eg_table(piece)[9 - row][col - START] + get_eg_piece_val(piece);
                     },
                 }
             }
@@ -225,7 +229,9 @@ pub fn evaluate(board: &BoardState) -> i32 {
 
     let mg_score;
     let eg_score;
-
+    
+    println!("White mg: {}, Black mg: {}", white_mg, black_mg);
+    println!("White eg: {}, Black eg: {}", white_eg, black_eg);
     match board.active_color {
         Color::White => {
             mg_score = white_mg - black_mg;
@@ -257,6 +263,7 @@ mod tests {
         Ok(_) => board = board_state.unwrap(),
         Err(e) => panic!("Error: {}", e),
       }
+      board.print_board();
       
       assert_eq!(evaluate(&board), 0);
     }

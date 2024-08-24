@@ -1,3 +1,5 @@
+#![allow(warnings)]
+
 mod piece;
 mod color;
 mod square;

@@ -1,3 +1,5 @@
+use std::process::exit;
+
 /* This crate encapsualtes a board state for a chess game */
 use crate::square::*;
 use crate::piece::*;
