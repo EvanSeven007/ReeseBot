@@ -14,7 +14,7 @@ use crate::move_parser::parse_move;
 use crate::color::Color;
 use crate::engine::find_move;
 use simple_logger::SimpleLogger;
-use log::{info};
+use log::{info, error};
 use std::env;
 
 fn main() {
@@ -59,7 +59,7 @@ fn main() {
                         board.print_board();
                     },
                     Err(e) => {
-                        info!("Error: {}", e);
+                        error!("Error: {}", e);
                     }
                 }
             },
