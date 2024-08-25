@@ -261,8 +261,63 @@ mod tests {
         Ok(_) => board = board_state.unwrap(),
         Err(e) => panic!("Error: {}", e),
       }
-      board.print_board();
       
       assert_eq!(evaluate(&board), 0);
+    }
+
+    #[test]
+    fn test_e4() {
+      let board_state_fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+      let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
+      let mut board: BoardState;
+    
+      match board_state {
+        Ok(_) => board = board_state.unwrap(),
+        Err(e) => panic!("Error: {}", e),
+      }
+      
+      assert_eq!(evaluate(&board), -32);
+    }
+
+    #[test]
+    fn test_d4() {
+      let board_state_fen = "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1";
+      let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
+      let mut board: BoardState;
+    
+      match board_state {
+        Ok(_) => board = board_state.unwrap(),
+        Err(e) => panic!("Error: {}", e),
+      }
+      
+      assert_eq!(evaluate(&board), -35);
+    }
+
+    #[test]
+    fn test_black_overwhelming() {
+      let board_state_fen = "r1kq1b2/1p2b3/3p4/2n1p1p1/8/7r/N4P2/KR6 b KQkq - 0 1";
+      let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
+      let mut board: BoardState;
+    
+      match board_state {
+        Ok(_) => board = board_state.unwrap(),
+        Err(e) => panic!("Error: {}", e),
+      }
+      
+      assert_eq!(evaluate(&board), 2470);
+    }
+
+    #[test]
+    fn test_random_opening() {
+      let board_state_fen = "r2qkb1r/1p1n1pp1/p2p1n2/3bp2p/4P3/1N2BP2/PPPQ2PP/R3KB1R w KQkq - 0 1";
+      let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
+      let mut board: BoardState;
+    
+      match board_state {
+        Ok(_) => board = board_state.unwrap(),
+        Err(e) => panic!("Error: {}", e),
+      }
+      
+      assert_eq!(evaluate(&board), -410);
     }
 }

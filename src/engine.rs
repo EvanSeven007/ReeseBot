@@ -1,5 +1,5 @@
 use crate::board_state::BoardState;
-use crate::chess_move::Move;
+use crate::chess_move::{Move, MoveType};
 use crate::evaluation::evaluate;
 use crate::move_gen::gen_all_moves;
 use std::cmp::{max, min};
@@ -104,7 +104,7 @@ fn alpha_beta(mut alpha: i32, mut beta: i32, mut depth: u16, search: &mut Search
     }
 
     alpha = max(alpha, ply - MATE_VALUE);
-    beta = min(beta, ply + MATE_VALUE);
+    beta = min(beta,  MATE_VALUE - ply);
 
     if alpha >= beta {
         return alpha;
@@ -130,7 +130,7 @@ fn alpha_beta(mut alpha: i32, mut beta: i32, mut depth: u16, search: &mut Search
             let mut board_copy = board.clone();
             board_copy.make_move(mv);
             search.insert_into_current_line(ply, mv); //Ply or ply + 1?
-            potential_best_score = alpha_beta(-1 * alpha, -1 * beta, depth - 1, search, ply + 1, &board_copy);
+            potential_best_score = -alpha_beta(-1 * beta, -1 * alpha, depth - 1, search, ply + 1, &board_copy);
             if potential_best_score > alpha {
                 if potential_best_score >= beta {
                     return potential_best_score
@@ -147,7 +147,7 @@ fn alpha_beta(mut alpha: i32, mut beta: i32, mut depth: u16, search: &mut Search
         search.insert_into_current_line(ply, mv);
         let mut board_copy = board.clone();
         board_copy.make_move(mv);
-        let mut score = alpha_beta(-1 * beta, -1 * alpha, depth - 1, search, ply + 1, &board_copy);
+        let mut score = -alpha_beta(-1 * beta, -1 * alpha, depth - 1, search, ply + 1, &board_copy);
         if -1 * score > potential_best_score {
             if score >= beta {
                 return score;
@@ -161,7 +161,7 @@ fn alpha_beta(mut alpha: i32, mut beta: i32, mut depth: u16, search: &mut Search
     potential_best_score
 }
 
-pub fn find_move(board: &BoardState) -> SearchResult {
+pub fn calculate_best_move(board: &BoardState, time_to_think: u64) -> SearchResult {
     let mut result = SearchResult{score: i32::MIN, move_found: None};
     let mut depth = 2;
     let mut ply = 0;
@@ -175,12 +175,12 @@ pub fn find_move(board: &BoardState) -> SearchResult {
     let mut nodes_searched = 0;
     while depth < MAX_DEPTH {
         nodes_searched += search.nodes_searched;
-        debug!("Trying Depth: {}, Nodes Searched: {}", depth, nodes_searched);
+        // debug!("Trying Depth: {}, Nodes Searched: {}", depth, nodes_searched);
         search.reset_search();
 
         for mv in &moves {
             //Ending after two minutes seconds
-            if start.elapsed().as_secs() > 1 {
+            if start.elapsed().as_secs() > time_to_think {
                 match result.move_found {
                     Some(_) => return result,
                     None => {
@@ -214,6 +214,10 @@ pub fn find_move(board: &BoardState) -> SearchResult {
 
 #[cfg(test)]
 mod tests {
+    use core::panic;
+
+    use crate::{board_state, chess_move::MoveType, piece::{self, PieceType}};
+
     use super::*;
 
     #[test]
@@ -240,6 +244,81 @@ mod tests {
             Err(e) => panic!("Error: {}", e),
         }
 
+    }
+
+    #[test]
+    fn takes_queen() {
+        let board_state_fen: &str = "k7/6q1/5P2/8/8/8/8/K7 w - - 0 1";
+        let mut board_state: BoardState= BoardState::new(board_state_fen).unwrap_or_else(|e| panic!("Error creating board state"));
+        let best_move = calculate_best_move(&board_state, 5).move_found.unwrap();
+        board_state.print_board();
+        board_state.make_move(&best_move);
+        board_state.print_board();
+
+        match best_move.piece_captured {
+            Some(piece) => {
+                // Handle the case when a piece is captured
+                if (piece.piece_type == PieceType::Queen) {
+                    assert!(true);
+                } else {
+                    panic!("Queen should have been captured!");
+                }
+            }
+            None => {
+                panic!("Something should have been captured.")
+            }
+        }
+    }
+
+    #[test]
+    fn takes_queen_over_rook() {
+        let board_state_fen: &str = "k7/4r1q1/5P2/8/8/8/8/K7 w - - 0 1";
+        let mut board_state: BoardState= BoardState::new(board_state_fen).unwrap_or_else(|e| panic!("Error creating board state"));
+        let best_move = calculate_best_move(&board_state, 5).move_found.unwrap();
+        println!("{:?}", best_move);
+        board_state.print_board();
+        board_state.make_move(&best_move);
+        board_state.print_board();
+
+
+        match best_move.piece_captured {
+            Some(piece) => {
+                // Handle the case when a piece is captured
+                if (piece.piece_type == PieceType::Queen) {
+                    assert!(true);
+                } else {
+                    panic!("Queen should have been captured!");
+                }
+            }
+            None => {
+                panic!("Something should have been captured.")
+            }
+        }
+    }
+
+    #[test]
+    fn finds_mate() {
+        let board_state_fen: &str = "rnbqkbnr/ppppp2p/5p2/6p1/3PP3/8/PPP2PPP/RNBQKBNR w KQkq d4 0 1";
+        let mut board_state: BoardState= BoardState::new(board_state_fen).unwrap_or_else(|e| panic!("Error creating board state"));
+        let best_move = calculate_best_move(&board_state, 5).move_found.unwrap();
+        println!("{:?}", best_move);
+        board_state.print_board();
+        board_state.make_move(&best_move);
+        board_state.print_board();
+
+
+        match best_move.move_type {
+            MoveType::Standard(std_move) => {
+                if (std_move.piece_moved.piece_type != PieceType::Queen) {
+                    panic!("Queen should have been moved!");
+                } else {
+                    assert!(std_move.after.row == 5 && std_move.after.col == 9);
+                }
+            }
+            _ => {
+                panic!("Should have moved Queen in for Checkmate")
+            }
+        }
     }
 
 

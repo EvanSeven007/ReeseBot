@@ -40,7 +40,6 @@ impl Piece {
         }
     }
 }
-
 impl fmt::Debug for Piece {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let piece_type_s: &str = match self.piece_type {

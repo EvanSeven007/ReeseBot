@@ -14,7 +14,7 @@ use board_state::BoardState;
 use crate::move_gen::gen_all_moves;
 use crate::move_parser::parse_move;
 use crate::color::Color;
-use crate::engine::find_move;
+use crate::engine::calculate_best_move;
 use simple_logger::SimpleLogger;
 use log::{info, error};
 use std::env;
@@ -66,7 +66,7 @@ fn main() {
                 }
             },
             Color::Black => {
-                let result = find_move(&board);
+                let result = calculate_best_move(&board, 10);
                 if let Some(mv) = result.move_found {
                     board.make_move(&mv);
                     board.print_board();

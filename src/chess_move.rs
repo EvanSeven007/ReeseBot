@@ -21,7 +21,7 @@ pub enum Direction {
 }
 
 /* All moves are of one of three types */ 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum MoveType {
     Standard(StandardMove), //move a piece from one square to another
     Castle(CastleMove), //Castling 
@@ -30,7 +30,7 @@ pub enum MoveType {
 }
 
 /* Standard moves involve normal captures and enpassants */ 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct StandardMove { //enpassant is in this?
     pub before: Position, 
     pub after: Position, 
@@ -38,21 +38,21 @@ pub struct StandardMove { //enpassant is in this?
 }
 
 /* Castles are either king or queenside */
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct CastleMove {
     pub is_kingside: bool, //Else queenside
     pub color: Color, 
 }
 
 /* Promoting a pawn */
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct PromotionMove {
     pub before: Position,
     pub after: Position,
     pub promote_to: Piece,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct EnPassantMove {
     pub before: Position,
     pub after: Position,
@@ -60,7 +60,7 @@ pub struct EnPassantMove {
 }
 
 /* A general move */
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct Move {
     pub move_type: MoveType,
     pub piece_captured: Option<Piece>, 
