@@ -1,3 +1,4 @@
+use crate::piece;
 use crate::piece::*;
 use crate::color::*;
 use crate::chess_move::*;
@@ -80,6 +81,12 @@ pub fn gen_all_moves(board: &BoardState, color: Color) -> Vec<Move> {
     for mv in move_set {
         let mut board_copy: BoardState = board.clone();
         board_copy.make_move(&mv); 
+        if let Some(piece_captured) = mv.piece_captured {
+            //Reject king captures ?
+            if piece_captured.piece_type == PieceType::King {
+                continue;
+            }
+        }
         if !board_copy.is_in_check(color, None) {
             legal_moves.push(mv);
         }
@@ -391,4 +398,14 @@ pub fn king_positions(pos: Position) -> Vec<Position> {
         pos.down(),
         pos.down().right()
     ]
+}
+
+mod tests {
+    use super::*;
+    #[test]
+    fn test_1() {
+        let board_state = BoardState::new("rnbqkbnr/pppppppp/8/8/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 0 1").unwrap();
+        let moves = gen_all_moves(&board_state, Color::White);
+        assert_eq!(moves.len(), 22);
+    }
 }

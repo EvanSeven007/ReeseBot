@@ -320,4 +320,19 @@ mod tests {
       
       assert_eq!(evaluate(&board), -410);
     }
+
+    #[test]
+    // -75
+    fn test_random_pos() {
+      let board_state_fen = "rnb1kbnr/pppp1ppp/8/4p1q1/3PP3/2N5/PPP2PPP/R1BQKBNR b KQkq - 0 1";
+      let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
+      let mut board: BoardState;
+    
+      match board_state {
+        Ok(_) => board = board_state.unwrap(),
+        Err(e) => panic!("Error: {}", e),
+      }
+      
+      assert_eq!(evaluate(&board), -75);
+    }
 }
