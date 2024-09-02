@@ -40,7 +40,7 @@ impl BoardState {
             }
         }
 
-        let fen = fen.to_string();
+        let fen = fen.trim().to_string();
 
         let fen_strings: Vec<&str> = fen.split(' ').collect();
         if fen_strings.len() != 6 {
@@ -165,6 +165,10 @@ impl BoardState {
         } else {
             Color::Black
         }
+    }
+
+    pub fn get_piece(&self, position: Position) -> Option<Piece> {
+        self.squares[position.row][position.col].piece
     }
 
     /* Updates a board state given a move, which was already been prechecked to be valid */

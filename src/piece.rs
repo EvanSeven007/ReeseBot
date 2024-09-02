@@ -3,7 +3,7 @@ use core::fmt;
 use crate::color::{Color};
 
 /* Enumeration for a piece type */ 
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum PieceType {
     King, 
     Queen, 
@@ -13,7 +13,6 @@ pub enum PieceType {
     Pawn,
     None, //Placeholder, used for instantiation
 }
-
 /* A piece consists of a type and a color */
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub struct Piece {
