@@ -65,7 +65,7 @@ fn main() {
             },
             Color::Black => {
                 println!("Thinking...");
-                let result = calculate_best_move(&board, 1);
+                let result = calculate_best_move(&board, 10);
                 if let Some(mv) = result.move_found {
                     clear_screen();
                     board.make_move(&mv);

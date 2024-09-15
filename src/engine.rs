@@ -90,7 +90,10 @@ fn quiesce(mut alpha: i32, mut beta: i32, search: &mut Search, board: &BoardStat
     return alpha;
 }
 
-fn alpha_beta(mut alpha: i32, mut beta: i32, mut depth: u16, search: &mut Search, ply: i32, board: &BoardState) -> i32 {
+fn alpha_beta(mut alpha: i32, mut beta: i32, mut depth: u16, search: &mut Search, ply: i32, board: &BoardState, start: Instant, time_to_think: u64) -> i32 {
+    if start.elapsed().as_secs() > time_to_think {
+        return quiesce(alpha, beta, search, board);
+    }
     search.increment_nodes_searched();
     let ply_index: usize = ply as usize;
 
@@ -130,7 +133,7 @@ fn alpha_beta(mut alpha: i32, mut beta: i32, mut depth: u16, search: &mut Search
             let mut board_copy = board.clone();
             board_copy.make_move(mv);
             search.insert_into_current_line(ply, mv); //Ply or ply + 1?
-            potential_best_score = -alpha_beta(-1 * beta, -1 * alpha, depth - 1, search, ply + 1, &board_copy);
+            potential_best_score = -alpha_beta(-1 * beta, -1 * alpha, depth - 1, search, ply + 1, &board_copy, start, time_to_think);
             if potential_best_score > alpha {
                 if potential_best_score >= beta {
                     return potential_best_score
@@ -147,7 +150,7 @@ fn alpha_beta(mut alpha: i32, mut beta: i32, mut depth: u16, search: &mut Search
         search.insert_into_current_line(ply, mv);
         let mut board_copy = board.clone();
         board_copy.make_move(mv);
-        let mut score = -alpha_beta(-1 * beta, -1 * alpha, depth - 1, search, ply + 1, &board_copy);
+        let mut score = -alpha_beta(-1 * beta, -1 * alpha, depth - 1, search, ply + 1, &board_copy, start, time_to_think);
         if -1 * score > potential_best_score {
             if score >= beta {
                 return score;
@@ -184,7 +187,7 @@ pub fn calculate_best_move(board: &BoardState, time_to_think: u64) -> SearchResu
                 match result.move_found {
                     Some(_) => return result,
                     None => {
-                        println!("no movef found!");
+                        println!("no move found!");
                         result.move_found = Some(moves[0]);
                         return result;
                     }
@@ -193,7 +196,7 @@ pub fn calculate_best_move(board: &BoardState, time_to_think: u64) -> SearchResu
             let mut board_copy = board.clone();
             board_copy.make_move(mv);
             //-1 or positive one??
-            let eval = -1 * alpha_beta(-1 * beta, -1 * alpha, depth - 1, &mut search, ply + 1, &board_copy);
+            let eval = -1 * alpha_beta(-1 * beta, -1 * alpha, depth - 1, &mut search, ply + 1, &board_copy, start, time_to_think);
     
             search.insert_into_current_line(ply, mv);
             if eval > alpha {
