@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug, info};
 
 use crate::board_state::{self, BoardState};
 use crate::chess_move::{castle, Move, MoveType, Position};
@@ -52,7 +52,10 @@ fn parse_fen<'a>(
     if trimmed_string == "0-0" || trimmed_string == "0-0-0" {
         return handle_castle_move(trimmed_string, board.active_color.clone(), moves);
     }
-
+    if trimmed_string.to_lowercase() == "resign" {
+        info!("Thanks for playing!");
+        exit(0);
+    }
     let mut move_info = MoveMetadata {
         piece: None,
         from_square_y: None,
@@ -71,8 +74,7 @@ fn parse_fen<'a>(
     for ch in trimmed_string.chars() {
         if move_info.piece.is_none() {
             let parsed_piece = char_to_piece_type(ch)
-                .or_else(|_| return Err("Parse error: Invalid Piece type."))
-                .unwrap();
+                .or_else(|_|  Err("Parse error: Invalid Piece type."))?;
             move_info.piece = Some(parsed_piece);
             // if the string is not a capture then this is just a naked pawn move (i.e. e4)
             if move_info.piece == Some(PieceType::Pawn) && !trimmed_string.contains("x") {
@@ -145,10 +147,9 @@ fn parse_fen<'a>(
             match mv.move_type {
                 MoveType::Standard(standard) => {
                     standard.piece_moved.piece_type == move_info.piece.unwrap()
-                        && standard.after.row == move_info.to_square_y.unwrap()
-                        && standard.after.col == move_info.to_square_x.unwrap()
-                        && move_info.promotion.is_none()
-                        && move_info.piece_rank == move_info.from_square_y
+                    && standard.after == after_pos
+                    && move_info.promotion.is_none()
+                    && move_info.piece_rank == move_info.from_square_y
                 }
                 MoveType::Promotion(promo_move) => {
                     if move_info.promotion.is_none() {
@@ -156,12 +157,13 @@ fn parse_fen<'a>(
                     }
 
                     promo_move.promote_to.piece_type == move_info.promotion.unwrap()
-                        && promo_move.after.row == move_info.to_square_y.unwrap()
-                        && promo_move.after.col == move_info.to_square_x.unwrap()
+                    && promo_move.after == after_pos
                 }
-                MoveType::EnPassant(_) => {
-                    //TODO!
-                    todo!();
+                MoveType::EnPassant(enpassant) => {
+                    move_info.piece == Some(PieceType::Pawn)      
+                    && move_info.is_capture == Some(true)
+                    && move_info.captured_piece.unwrap().piece_type == PieceType::Pawn          
+                    && enpassant.after == after_pos
                 }
                 _ => false,
             }
@@ -294,7 +296,12 @@ fn select_correct_move(move_info: &mut MoveMetadata, valid_moves: Vec<Move>) -> 
                     if promo_move.before.row == rank {
                         return Ok(mv);
                     }
-                }
+                },
+                MoveType::EnPassant(enpassant) => {
+                    if enpassant.before.row == rank {
+                        return Ok(mv);
+                    }
+                },
                 _ => continue,
             }
         }
@@ -393,7 +400,6 @@ mod tests {
 
     #[test]
     fn test_promotion() {
-        // 8/3P4/8/8/8/8/8/1k2K3
         let board_state = BoardState::new("8/3P4/8/8/8/8/8/1k2K3 w - - 0 1").unwrap();
         let moves = gen_all_moves(&board_state, Color::White);
 

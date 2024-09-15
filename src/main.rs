@@ -21,12 +21,8 @@ use std::env;
 
 fn main() {
     SimpleLogger::new().without_timestamps().init().unwrap();
-    info!("Hello! I am Reese Bot, a chess playing program created by Evan Stegall (https://github.com/EvanSeven007)");
-    info!("To play, you can either use the MOVE or RESIGN command");
-    info!("To move a piece from point A to point B, use\nMOVE before after where before, after are squares in algebraic notation (i.e. e4, d4)");
-    info!("To castle, use MOVE 0-0 or MOVE 0-0-0 for king/queen side castle respecively");
-    info!("For pawn promotions, simply type MOVE before after=(Q, B, R, N) where Q = Queen, B = Bishop, R = Rook, N = Knight");
-    info!("To resign the game, type RESIGN");
+    info!("Hello! I am Reese Bot, a CLI based (for now) chess engine.");
+    info!("To play, simply type your move in standard fen string notation.");
     info!("");
     let board_state_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - - -";
     let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
@@ -58,6 +54,7 @@ fn main() {
                 std::io::stdin().read_line(&mut input).unwrap();
                 match parse_move(input, &board, moves) {
                     Ok(mv) => {
+                        clear_screen();
                         board.make_move(&mv);
                         board.print_board();
                     },
@@ -67,8 +64,10 @@ fn main() {
                 }
             },
             Color::Black => {
+                println!("Thinking...");
                 let result = calculate_best_move(&board, 1);
                 if let Some(mv) = result.move_found {
+                    clear_screen();
                     board.make_move(&mv);
                     board.print_board();
                 } else { //Black has no moves
@@ -82,4 +81,8 @@ fn main() {
             }
         }
     }
+}
+
+fn clear_screen() {
+    print!("{}[2J", 27 as char);
 }
