@@ -84,5 +84,5 @@ fn main() {
 }
 
 fn clear_screen() {
-    print!("{}[2J", 27 as char);
+    print!("{}[2J", 27 as u8 as char);
 }

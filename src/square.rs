@@ -1,4 +1,4 @@
-use crate::color::{Color};
+use crate::color::Color;
 use crate::piece::{Piece, PieceType};
 use colored::*;
 

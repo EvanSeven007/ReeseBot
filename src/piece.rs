@@ -1,6 +1,5 @@
 use core::fmt;
-
-use crate::color::{Color};
+use crate::color::Color;
 
 /* Enumeration for a piece type */ 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
