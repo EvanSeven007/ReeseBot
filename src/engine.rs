@@ -12,7 +12,7 @@ use log::{info, debug};
 /* Search struct idea drawm from https://github.com/MitchelPaulin/Walleye/blob/main/src/engine.rs */
 
 const MATE_VALUE:i32 = 1000000000; //evaluation of a board state in mate
-pub const MAX_DEPTH: u16 = 25;
+pub const MAX_DEPTH: u16 = 8;
 pub const ARRAY_SIZE: usize =  ((MAX_DEPTH * MAX_DEPTH + MAX_DEPTH)/2 + 1) as usize;
 type MoveList = [Option<Move>; ARRAY_SIZE];
 

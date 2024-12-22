@@ -25,6 +25,12 @@ fn main() {
     info!("To play, simply type your move in standard fen string notation.");
     info!("");
     let board_state_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - - -";
+    let time_to_think = 10; // Time in seconds for AI to think
+
+    play_game(board_state_fen, time_to_think);
+}
+
+fn play_game(board_state_fen: &str, time_to_think: u64) {
     let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
     let mut board: BoardState;
 
@@ -65,7 +71,7 @@ fn main() {
             },
             Color::Black => {
                 println!("Thinking...");
-                let result = calculate_best_move(&board, 10);
+                let result = calculate_best_move(&board, time_to_think);
                 if let Some(mv) = result.move_found {
                     clear_screen();
                     board.make_move(&mv);
@@ -83,6 +89,7 @@ fn main() {
     }
 }
 
+// Weird hack but it works
 fn clear_screen() {
     print!("{}[2J", 27 as u8 as char);
 }
