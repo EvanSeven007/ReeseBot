@@ -15,19 +15,35 @@ use crate::move_gen::gen_all_moves;
 use crate::move_parser::parse_move;
 use crate::color::Color;
 use crate::engine::calculate_best_move;
+use clap::Parser;
 use simple_logger::SimpleLogger;
 use log::{info, error};
 use std::env;
+
+const DEFAULT_BOARD_STATE: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - - -";
+
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Desired starting board state denoted in fen notation
+    #[arg(short, long, default_value = DEFAULT_BOARD_STATE)]
+    fen: String,
+
+    /// Number in seconds allocated to engine to think 
+    #[arg(short, long, default_value_t = 10)]
+    time_to_think: u64,
+}
+
 
 fn main() {
     SimpleLogger::new().without_timestamps().init().unwrap();
     info!("Hello! I am Reese Bot, a CLI based (for now) chess engine.");
     info!("To play, simply type your move in standard fen string notation.");
     info!("");
-    let board_state_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - - -";
-    let time_to_think = 10; // Time in seconds for AI to think
+    let args = Args::parse();
 
-    play_game(board_state_fen, time_to_think);
+    play_game(&args.fen, args.time_to_think);
 }
 
 fn play_game(board_state_fen: &str, time_to_think: u64) {
