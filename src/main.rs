@@ -1,24 +1,24 @@
 #![allow(warnings)]
 
-mod piece;
-mod color;
-mod square;
-mod chess_move;
 mod board_state;
-mod move_gen;
+mod chess_move;
+mod color;
 mod engine;
-mod move_parser;
 mod evaluation;
+mod move_gen;
+mod move_parser;
+mod piece;
+mod square;
 
-use board_state::BoardState;
-use move_parser::validate_move;
-use crate::move_gen::gen_all_moves;
-use crate::move_parser::parse_move;
 use crate::color::Color;
 use crate::engine::calculate_best_move;
-use clap::{Parser, ArgAction};
+use crate::move_gen::gen_all_moves;
+use crate::move_parser::parse_move;
+use board_state::BoardState;
+use clap::{ArgAction, Parser};
+use log::{error, info};
+use move_parser::validate_move;
 use simple_logger::SimpleLogger;
-use log::{info, error};
 use std::env;
 
 const DEFAULT_BOARD_STATE: &'static str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - - -";
@@ -31,15 +31,14 @@ struct Args {
     #[arg(short, long, default_value = DEFAULT_BOARD_STATE)]
     fen: String,
 
-    /// Number in seconds allocated to engine to think 
+    /// Number in seconds allocated to engine to think
     #[arg(short, long, default_value_t = 10)]
     time_to_think: u64,
 
     /// Enables the engine mode
     #[arg(long, action = ArgAction::SetTrue)]
-    engine_mode_on: bool,
+    engine_mode: bool,
 }
-
 
 fn main() {
     SimpleLogger::new().without_timestamps().init().unwrap();
@@ -48,10 +47,10 @@ fn main() {
     info!("");
     let args = Args::parse();
 
-    play_game(&args.fen, args.time_to_think);
+    play_game(&args.fen, args.time_to_think, args.engine_mode);
 }
 
-fn play_game(board_state_fen: &str, time_to_think: u64) {
+fn play_game(board_state_fen: &str, time_to_think: u64, engine_mode: bool) {
     let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
     let mut board: BoardState;
 
@@ -61,7 +60,7 @@ fn play_game(board_state_fen: &str, time_to_think: u64) {
     }
 
     board.print_board();
-    let mut moves; 
+    let mut moves;
     loop {
         let mut input = String::new();
         moves = gen_all_moves(&board, Color::White);
@@ -79,18 +78,17 @@ fn play_game(board_state_fen: &str, time_to_think: u64) {
             Color::White => {
                 println!("Please enter a move: ");
                 std::io::stdin().read_line(&mut input).unwrap();
-                match parse_move(&input, &board) {
+                match parse_move(&input, &board, engine_mode) {
                     Ok(mv) => {
                         clear_screen();
                         board.make_move(&mv);
                         board.print_board();
-                    },
+                    }
                     Err(e) => {
                         error!("Received Invalid Move: {}", e);
                     }
                 }
-
-            },
+            }
             Color::Black => {
                 println!("Thinking...");
                 let result = calculate_best_move(&board, time_to_think);
@@ -98,7 +96,8 @@ fn play_game(board_state_fen: &str, time_to_think: u64) {
                     clear_screen();
                     board.make_move(&mv);
                     board.print_board();
-                } else { //Black has no moves
+                } else {
+                    //Black has no moves
                     if board.is_in_check(Color::Black, None) {
                         info!("White has won the game");
                     } else {

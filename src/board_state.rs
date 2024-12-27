@@ -1,11 +1,11 @@
 use std::process::exit;
 
 /* This crate encapsualtes a board state for a chess game */
-use crate::square::*;
-use crate::piece::*;
-use crate::color::*;
 use crate::chess_move::*;
-use crate::move_gen::{knight_positions, king_positions};
+use crate::color::*;
+use crate::move_gen::{king_positions, knight_positions};
+use crate::piece::*;
+use crate::square::*;
 use num::abs;
 
 ///Bools that describe which side can castle at any given point in time
@@ -13,27 +13,29 @@ use num::abs;
 pub struct CastleRights {
     pub can_castle_white_kingside: bool,
     pub can_castle_white_queenside: bool,
-    pub can_castle_black_kingside: bool, 
+    pub can_castle_black_kingside: bool,
     pub can_castle_black_queenside: bool,
 }
-///A boardstate is a 12x12 filled with Piece Structs. Active color is the color whose turn it is to play. en_passant is the position of a pawn that just moved up two squares. 
+///A boardstate is a 12x12 filled with Piece Structs. Active color is the color whose turn it is to play. en_passant is the position of a pawn that just moved up two squares.
 #[derive(Clone, Copy)]
 pub struct BoardState {
     pub squares: [[Square; 12]; 12],
-    pub active_color: Color, 
+    pub active_color: Color,
     pub castle_rights: CastleRights,
     pub en_passant: Option<Position>,
-    pub last_move: Option<Move>
+    pub last_move: Option<Move>,
 }
 
-impl BoardState { 
+impl BoardState {
     /* Creates a board state from a FEN string */
     pub fn new(fen: &str) -> Result<BoardState, &str> {
-
         //Creating an 12x12 array of uninitialized arrays
         //The chess board will sit in the center, with two squares of "boundary" around them. This is so we don't have to deal with out of array errors later on
-        let mut squares = [[Square {piece: None, color: (Color::White) }; 12]; 12]; //Setting to white and then updating later
-        //Assigning colors, but not charged
+        let mut squares = [[Square {
+            piece: None,
+            color: (Color::White),
+        }; 12]; 12]; //Setting to white and then updating later
+                     //Assigning colors, but not charged
         for index in 2..10 {
             for inner_index in 2..10 {
                 squares[index][inner_index].color = BoardState::get_color(&index, &inner_index);
@@ -50,7 +52,7 @@ impl BoardState {
         let position_str: Vec<&str> = fen_strings[0].split('/').collect();
         let mut col: usize;
         let mut row_string: &str; //String that stores the current row info
-        
+
         for row in 0..8 {
             row_string = position_str[row];
             col = 2;
@@ -74,7 +76,7 @@ impl BoardState {
         let mut can_castle_white_queenside = false;
         let mut can_castle_black_kingside = false;
         let mut can_castle_black_queenside = false;
-        
+
         /* This is unforgiveably stupid */
         for fen_entry in fen_strings[2].chars() {
             match fen_entry {
@@ -82,7 +84,7 @@ impl BoardState {
                 'Q' => can_castle_white_queenside = true,
                 'k' => can_castle_black_kingside = true,
                 'q' => can_castle_black_queenside = true,
-                '-' => {},
+                '-' => {}
                 _ => panic!("fen string castling info is malformed!"),
             }
         }
@@ -91,7 +93,7 @@ impl BoardState {
             can_castle_white_kingside,
             can_castle_white_queenside,
             can_castle_black_kingside,
-            can_castle_black_queenside
+            can_castle_black_queenside,
         };
 
         //Variables for enpassant goodness
@@ -100,7 +102,7 @@ impl BoardState {
         let y: usize;
         if fen_strings[3].len() == 1 && fen_strings[3] == "-" {
             en_passant = None;
-        } else if fen_strings[3].len() == 2 { 
+        } else if fen_strings[3].len() == 2 {
             /* Parse enpassant string */
             let en_passant_string: Vec<char> = fen_strings[3].chars().collect();
             match en_passant_string[0] {
@@ -116,40 +118,80 @@ impl BoardState {
             };
             y = (9 - en_passant_string[1]
                 .to_digit(10)
-                .unwrap_or_else(|| panic!("fen string enpassant malformed!"))) as usize;
+                .unwrap_or_else(|| panic!("fen string enpassant malformed!")))
+                as usize;
 
             if !(1..=8).contains(&y) {
-                return Err("fen string enpassant malformed!")
+                return Err("fen string enpassant malformed!");
             }
-            en_passant = Some(Position{ row: x, col: y }.swap()); //Accounting for how we index array
-        
+            en_passant = Some(Position { row: x, col: y }.swap()); //Accounting for how we index array
         } else {
-            return Err("fen string enpassant malformed!")
+            return Err("fen string enpassant malformed!");
         }
 
-
-        Ok(BoardState { squares, active_color, castle_rights, en_passant, last_move: None})
+        Ok(BoardState {
+            squares,
+            active_color,
+            castle_rights,
+            en_passant,
+            last_move: None,
+        })
     }
 
     //Creates a Piece from a fen string representation of said piece
     fn parse_fen_entry(entry: &char) -> Result<Option<Piece>, &str> {
         match entry {
-            'r' => Ok(Some(Piece {piece_type: PieceType::Rook, color: Color::Black})),
-            'n' => Ok(Some(Piece {piece_type: PieceType::Knight, color: Color::Black})),
-            'b' => Ok(Some(Piece {piece_type: PieceType::Bishop, color: Color::Black})),
-            'q' => Ok(Some(Piece {piece_type: PieceType::Queen, color: Color::Black})),
-            'k' => Ok(Some(Piece {piece_type: PieceType::King, color: Color::Black})),
-            'p' => Ok(Some(Piece {piece_type: PieceType::Pawn, color: Color::Black})),
-            'R' => Ok(Some(Piece {piece_type: PieceType::Rook, color: Color::White})),
-            'N' => Ok(Some(Piece {piece_type: PieceType::Knight, color: Color::White})),
-            'B' => Ok(Some(Piece {piece_type: PieceType::Bishop, color: Color::White})),
-            'Q' => Ok(Some(Piece {piece_type: PieceType::Queen, color: Color::White})),
-            'K' => Ok(Some(Piece {piece_type: PieceType::King, color: Color::White})),
-            'P' => Ok(Some(Piece {piece_type: PieceType::Pawn, color: Color::White})),
+            'r' => Ok(Some(Piece {
+                piece_type: PieceType::Rook,
+                color: Color::Black,
+            })),
+            'n' => Ok(Some(Piece {
+                piece_type: PieceType::Knight,
+                color: Color::Black,
+            })),
+            'b' => Ok(Some(Piece {
+                piece_type: PieceType::Bishop,
+                color: Color::Black,
+            })),
+            'q' => Ok(Some(Piece {
+                piece_type: PieceType::Queen,
+                color: Color::Black,
+            })),
+            'k' => Ok(Some(Piece {
+                piece_type: PieceType::King,
+                color: Color::Black,
+            })),
+            'p' => Ok(Some(Piece {
+                piece_type: PieceType::Pawn,
+                color: Color::Black,
+            })),
+            'R' => Ok(Some(Piece {
+                piece_type: PieceType::Rook,
+                color: Color::White,
+            })),
+            'N' => Ok(Some(Piece {
+                piece_type: PieceType::Knight,
+                color: Color::White,
+            })),
+            'B' => Ok(Some(Piece {
+                piece_type: PieceType::Bishop,
+                color: Color::White,
+            })),
+            'Q' => Ok(Some(Piece {
+                piece_type: PieceType::Queen,
+                color: Color::White,
+            })),
+            'K' => Ok(Some(Piece {
+                piece_type: PieceType::King,
+                color: Color::White,
+            })),
+            'P' => Ok(Some(Piece {
+                piece_type: PieceType::Pawn,
+                color: Color::White,
+            })),
             _ => Err("Not a valid fen piece!"),
         }
     }
-    
 
     /* Gets the color of a board from its coordinates */
     fn get_color(val1: &usize, val2: &usize) -> Color {
@@ -176,31 +218,29 @@ impl BoardState {
         self.last_move = Some(*current_move);
         let move_type: &MoveType = &current_move.move_type;
         self.en_passant = None; //Reseting en_passant square to None after every move, this will be updated later depending on move
-        
+
         match move_type {
             MoveType::Standard(val) => {
                 //Moving the piece
                 self.squares[val.before.row][val.before.col].piece = None;
                 self.squares[val.after.row][val.after.col].piece = Some(val.piece_moved);
 
-                //Setting enpassant if we moved a pawn 
+                //Setting enpassant if we moved a pawn
                 match val.piece_moved.piece_type {
                     PieceType::Pawn => {
                         if abs(val.after.row as i8 - val.before.row as i8) == 2 {
                             self.en_passant = Some(val.after);
                         }
-                    }, 
+                    }
                     //removing Castling Rights if we move the king
-                    PieceType::King => {
-                        match val.piece_moved.color {
-                            Color::White => {
-                                self.castle_rights.can_castle_white_kingside = false;
-                                self.castle_rights.can_castle_white_queenside = false;
-                            }, 
-                            Color::Black => {
-                                self.castle_rights.can_castle_black_kingside = false;
-                                self.castle_rights.can_castle_black_queenside = false;
-                            }
+                    PieceType::King => match val.piece_moved.color {
+                        Color::White => {
+                            self.castle_rights.can_castle_white_kingside = false;
+                            self.castle_rights.can_castle_white_queenside = false;
+                        }
+                        Color::Black => {
+                            self.castle_rights.can_castle_black_kingside = false;
+                            self.castle_rights.can_castle_black_queenside = false;
                         }
                     },
                     //removing castling rights if we move the rook
@@ -209,21 +249,29 @@ impl BoardState {
                             Color::White => {
                                 //Were the rooks on default positions?
                                 match val.before {
-                                    Position{row: 9, col: 2} => self.castle_rights.can_castle_white_queenside = false,
-                                    Position{row: 9, col: 9} => self.castle_rights.can_castle_white_kingside = false,
+                                    Position { row: 9, col: 2 } => {
+                                        self.castle_rights.can_castle_white_queenside = false
+                                    }
+                                    Position { row: 9, col: 9 } => {
+                                        self.castle_rights.can_castle_white_kingside = false
+                                    }
                                     _ => {}
                                 }
-                            }, 
+                            }
                             Color::Black => {
                                 match val.before {
                                     //Were the rooks on default positions?
-                                    Position{row: 2, col: 2} => self.castle_rights.can_castle_black_queenside = false,
-                                    Position{row: 2, col: 9} => self.castle_rights.can_castle_black_kingside = false,
+                                    Position { row: 2, col: 2 } => {
+                                        self.castle_rights.can_castle_black_queenside = false
+                                    }
+                                    Position { row: 2, col: 9 } => {
+                                        self.castle_rights.can_castle_black_kingside = false
+                                    }
                                     _ => {}
                                 }
                             }
                         }
-                    },
+                    }
                     _ => {}
                 }
 
@@ -232,24 +280,31 @@ impl BoardState {
                     if piece.piece_type == PieceType::Rook {
                         match val.after {
                             //Default positions of the rooks
-                            Position{row: 2, col: 2} => self.castle_rights.can_castle_black_queenside = false,
-                            Position{row: 2, col: 9} => self.castle_rights.can_castle_black_kingside = false,
-                            Position{row: 9, col: 2} => self.castle_rights.can_castle_white_queenside = false,
-                            Position{row: 9, col: 9} => self.castle_rights.can_castle_white_kingside = false,
+                            Position { row: 2, col: 2 } => {
+                                self.castle_rights.can_castle_black_queenside = false
+                            }
+                            Position { row: 2, col: 9 } => {
+                                self.castle_rights.can_castle_black_kingside = false
+                            }
+                            Position { row: 9, col: 2 } => {
+                                self.castle_rights.can_castle_white_queenside = false
+                            }
+                            Position { row: 9, col: 9 } => {
+                                self.castle_rights.can_castle_white_kingside = false
+                            }
                             _ => {}
-                            } 
                         }
                     }
-            },
+                }
+            }
 
             MoveType::Castle(val) => {
                 let x_position;
                 let y_positions: Vec<usize>;
-                if val.is_kingside  {
-                    y_positions = vec![6,9,8,7];
-                }
-                else {
-                    y_positions = vec![6,2,4,5];
+                if val.is_kingside {
+                    y_positions = vec![6, 9, 8, 7];
+                } else {
+                    y_positions = vec![6, 2, 4, 5];
                 }
                 //Set castling rights here
                 match self.active_color {
@@ -266,17 +321,25 @@ impl BoardState {
                 }
                 self.squares[x_position][y_positions[0]].piece = None;
                 self.squares[x_position][y_positions[1]].piece = None;
-                self.squares[x_position][y_positions[2]].piece = Some(Piece {piece_type: PieceType::King, color: self.active_color });
-                self.squares[x_position][y_positions[3]].piece = Some(Piece {piece_type: PieceType::Rook, color: self.active_color });
-
-            },
+                self.squares[x_position][y_positions[2]].piece = Some(Piece {
+                    piece_type: PieceType::King,
+                    color: self.active_color,
+                });
+                self.squares[x_position][y_positions[3]].piece = Some(Piece {
+                    piece_type: PieceType::Rook,
+                    color: self.active_color,
+                });
+            }
             MoveType::Promotion(val) => {
                 self.squares[val.before.row][val.before.col].piece = None;
                 self.squares[val.after.row][val.after.col].piece = Some(val.promote_to);
             }
             MoveType::EnPassant(val) => {
                 self.squares[val.before.row][val.before.col].piece = None;
-                self.squares[val.after.row][val.after.col].piece = Some(Piece{piece_type: PieceType::Pawn, color: self.active_color});
+                self.squares[val.after.row][val.after.col].piece = Some(Piece {
+                    piece_type: PieceType::Pawn,
+                    color: self.active_color,
+                });
                 self.squares[val.en_passant_pos.row][val.en_passant_pos.col].piece = None;
             }
         }
@@ -284,20 +347,20 @@ impl BoardState {
         //Changing color
         match self.active_color {
             Color::Black => self.active_color = Color::White,
-            Color::White => self.active_color = Color::Black, 
+            Color::White => self.active_color = Color::Black,
         };
     }
-    
-    /* 
-    * Checks whether or not a given square is under attack from enemy pieces. 
-    * Passed_king_pos is the position from which it will check if it is under attack, if this is None it will find the king manually
-    * This can be used for more generally just checking if a king is under attack, for example in determining if castling is possible
-    */
+
+    /*
+     * Checks whether or not a given square is under attack from enemy pieces.
+     * Passed_king_pos is the position from which it will check if it is under attack, if this is None it will find the king manually
+     * This can be used for more generally just checking if a king is under attack, for example in determining if castling is possible
+     */
     pub fn is_in_check(self: BoardState, color: Color, passed_king_pos: Option<Position>) -> bool {
         //White makes move -> black is active color, check if whtie is in check
         //Finding the king
         let king_pos: Position;
-        
+
         //Finding the king if there is no passed Value
         if let Some(val) = passed_king_pos {
             king_pos = val;
@@ -307,7 +370,7 @@ impl BoardState {
                 for y in 2..10 {
                     if let Some(piece) = self.squares[x][y].piece {
                         if piece.piece_type == PieceType::King && piece.color == color {
-                            king_pos_opt = Some(Position{row: x, col: y});
+                            king_pos_opt = Some(Position { row: x, col: y });
                         }
                     }
                 }
@@ -317,11 +380,19 @@ impl BoardState {
 
         //Checking by rook/Queen
         let mut next_pos = king_pos.clone();
-        for dir in [Direction::Up, Direction::Down, Direction::Left, Direction::Right] {
+        for dir in [
+            Direction::Up,
+            Direction::Down,
+            Direction::Left,
+            Direction::Right,
+        ] {
             while next_pos.next_position(&dir).is_valid_position() {
                 next_pos = next_pos.next_position(&dir);
                 if let Some(piece) = self.squares[next_pos.row][next_pos.col].piece {
-                    if piece.color != color && (piece.piece_type == PieceType::Rook || piece.piece_type == PieceType::Queen) {
+                    if piece.color != color
+                        && (piece.piece_type == PieceType::Rook
+                            || piece.piece_type == PieceType::Queen)
+                    {
                         return true;
                     }
                     break;
@@ -330,30 +401,37 @@ impl BoardState {
             next_pos = king_pos.clone();
         }
 
-
         //Checking by bishop/Queen
         let mut next_pos = king_pos.clone();
-        for dir in [Direction::UpRight, Direction::DownRight, Direction::UpLeft, Direction::DownLeft] {
+        for dir in [
+            Direction::UpRight,
+            Direction::DownRight,
+            Direction::UpLeft,
+            Direction::DownLeft,
+        ] {
             while next_pos.next_position(&dir).is_valid_position() {
                 next_pos = next_pos.next_position(&dir);
-                if let Some(piece) = self.squares[next_pos.row][next_pos.col].piece{
-                    if piece.color != color && (piece.piece_type == PieceType::Bishop || piece.piece_type == PieceType::Queen) {
+                if let Some(piece) = self.squares[next_pos.row][next_pos.col].piece {
+                    if piece.color != color
+                        && (piece.piece_type == PieceType::Bishop
+                            || piece.piece_type == PieceType::Queen)
+                    {
                         return true;
                     }
-                    break;   
+                    break;
                 }
             }
             next_pos = king_pos.clone();
         }
 
-        //Checking for pawn 
+        //Checking for pawn
         let square_right;
         let square_left;
         match color {
             Color::White => {
                 square_right = self.squares[king_pos.up().right().row][king_pos.up().right().col];
                 square_left = self.squares[king_pos.up().left().row][king_pos.up().left().col];
-            },
+            }
             Color::Black => {
                 square_right = self.squares[king_pos.down().right().row][king_pos.up().right().col];
                 square_left = self.squares[king_pos.down().left().row][king_pos.down().left().col];
@@ -393,7 +471,7 @@ impl BoardState {
     pub fn print_board(self) {
         for index in 2..10 {
             print!("[{}]", 10 - index);
-            for inner_index in 2..10{
+            for inner_index in 2..10 {
                 print!("{}", self.squares[index][inner_index].symbol());
             }
             print!("\n");

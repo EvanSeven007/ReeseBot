@@ -2,22 +2,22 @@ use crate::board_state::BoardState;
 use crate::chess_move::{Move, MoveType};
 use crate::evaluation::evaluate;
 use crate::move_gen::gen_all_moves;
+use log::{debug, info};
+use simple_logger::SimpleLogger;
 use std::cmp::{max, min};
 use std::i32;
 use std::time::Instant;
-use simple_logger::SimpleLogger;
-use log::{info, debug};
 
 /* Everything drawn from https://www.chessprogramming.org/Main_Page */
 /* Search struct idea drawm from https://github.com/MitchelPaulin/Walleye/blob/main/src/engine.rs */
 
-const MATE_VALUE:i32 = 1000000000; //evaluation of a board state in mate
+const MATE_VALUE: i32 = 1000000000; //evaluation of a board state in mate
 pub const MAX_DEPTH: u16 = 8;
-pub const ARRAY_SIZE: usize =  ((MAX_DEPTH * MAX_DEPTH + MAX_DEPTH)/2 + 1) as usize;
+pub const ARRAY_SIZE: usize = ((MAX_DEPTH * MAX_DEPTH + MAX_DEPTH) / 2 + 1) as usize;
 type MoveList = [Option<Move>; ARRAY_SIZE];
 
 pub struct Search {
-    pub nodes_searched: u32, 
+    pub nodes_searched: u32,
     pub pv_moves: MoveList,
     pub current_line: MoveList, //current line being searched
 }
@@ -56,7 +56,7 @@ impl Search {
 
 fn quiesce(mut alpha: i32, mut beta: i32, search: &mut Search, board: &BoardState) -> i32 {
     let init_eval: i32 = evaluate(board);
-    
+
     search.increment_nodes_searched();
 
     if init_eval >= beta {
@@ -82,7 +82,7 @@ fn quiesce(mut alpha: i32, mut beta: i32, search: &mut Search, board: &BoardStat
                 if score > alpha {
                     alpha = score;
                 }
-            },
+            }
             None => {}
         }
     }
@@ -90,7 +90,16 @@ fn quiesce(mut alpha: i32, mut beta: i32, search: &mut Search, board: &BoardStat
     return alpha;
 }
 
-fn alpha_beta(mut alpha: i32, mut beta: i32, mut depth: u16, search: &mut Search, ply: i32, board: &BoardState, start: Instant, time_to_think: u64) -> i32 {
+fn alpha_beta(
+    mut alpha: i32,
+    mut beta: i32,
+    mut depth: u16,
+    search: &mut Search,
+    ply: i32,
+    board: &BoardState,
+    start: Instant,
+    time_to_think: u64,
+) -> i32 {
     if start.elapsed().as_secs() > time_to_think {
         return quiesce(alpha, beta, search, board);
     }
@@ -107,7 +116,7 @@ fn alpha_beta(mut alpha: i32, mut beta: i32, mut depth: u16, search: &mut Search
     }
 
     alpha = max(alpha, ply - MATE_VALUE);
-    beta = min(beta,  MATE_VALUE - ply);
+    beta = min(beta, MATE_VALUE - ply);
 
     if alpha >= beta {
         return alpha;
@@ -133,10 +142,19 @@ fn alpha_beta(mut alpha: i32, mut beta: i32, mut depth: u16, search: &mut Search
             let mut board_copy = board.clone();
             board_copy.make_move(mv);
             search.insert_into_current_line(ply, mv); //Ply or ply + 1?
-            potential_best_score = -alpha_beta(-1 * beta, -1 * alpha, depth - 1, search, ply + 1, &board_copy, start, time_to_think);
+            potential_best_score = -alpha_beta(
+                -1 * beta,
+                -1 * alpha,
+                depth - 1,
+                search,
+                ply + 1,
+                &board_copy,
+                start,
+                time_to_think,
+            );
             if potential_best_score > alpha {
                 if potential_best_score >= beta {
-                    return potential_best_score
+                    return potential_best_score;
                 }
                 search.set_principle_variation();
                 alpha = potential_best_score;
@@ -145,12 +163,21 @@ fn alpha_beta(mut alpha: i32, mut beta: i32, mut depth: u16, search: &mut Search
             other_moves.push(*mv);
         }
     }
-    
+
     for mv in &mut other_moves {
         search.insert_into_current_line(ply, mv);
         let mut board_copy = board.clone();
         board_copy.make_move(mv);
-        let mut score = -alpha_beta(-1 * beta, -1 * alpha, depth - 1, search, ply + 1, &board_copy, start, time_to_think);
+        let mut score = -alpha_beta(
+            -1 * beta,
+            -1 * alpha,
+            depth - 1,
+            search,
+            ply + 1,
+            &board_copy,
+            start,
+            time_to_think,
+        );
         if -1 * score > potential_best_score {
             if score >= beta {
                 return score;
@@ -158,14 +185,16 @@ fn alpha_beta(mut alpha: i32, mut beta: i32, mut depth: u16, search: &mut Search
             search.set_principle_variation();
             potential_best_score = score;
         }
-
     }
 
     potential_best_score
 }
 
 pub fn calculate_best_move(board: &BoardState, time_to_think: u64) -> SearchResult {
-    let mut result = SearchResult{score: i32::MIN, move_found: None};
+    let mut result = SearchResult {
+        score: i32::MIN,
+        move_found: None,
+    };
     let mut depth = 2;
     let mut ply = 0;
     let mut search = Search::new();
@@ -196,8 +225,18 @@ pub fn calculate_best_move(board: &BoardState, time_to_think: u64) -> SearchResu
             let mut board_copy = board.clone();
             board_copy.make_move(mv);
             //-1 or positive one??
-            let eval = -1 * alpha_beta(-1 * beta, -1 * alpha, depth - 1, &mut search, ply + 1, &board_copy, start, time_to_think);
-    
+            let eval = -1
+                * alpha_beta(
+                    -1 * beta,
+                    -1 * alpha,
+                    depth - 1,
+                    &mut search,
+                    ply + 1,
+                    &board_copy,
+                    start,
+                    time_to_think,
+                );
+
             search.insert_into_current_line(ply, mv);
             if eval > alpha {
                 if eval > result.score {
@@ -219,7 +258,11 @@ pub fn calculate_best_move(board: &BoardState, time_to_think: u64) -> SearchResu
 mod tests {
     use core::panic;
 
-    use crate::{board_state, chess_move::MoveType, piece::{self, PieceType}};
+    use crate::{
+        board_state,
+        chess_move::MoveType,
+        piece::{self, PieceType},
+    };
 
     use super::*;
 
@@ -228,12 +271,11 @@ mod tests {
         let board_state_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - - -";
         let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
         let mut board: BoardState;
-    
+
         match board_state {
             Ok(_) => board = board_state.unwrap(),
             Err(e) => panic!("Error: {}", e),
         }
-
     }
 
     #[test]
@@ -241,18 +283,18 @@ mod tests {
         let board_state_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - - -";
         let board_state: Result<BoardState, &str> = BoardState::new(board_state_fen);
         let mut board: BoardState;
-    
+
         match board_state {
             Ok(_) => board = board_state.unwrap(),
             Err(e) => panic!("Error: {}", e),
         }
-
     }
 
     #[test]
     fn takes_queen() {
         let board_state_fen: &str = "k7/6q1/5P2/8/8/8/8/K7 w - - 0 1";
-        let mut board_state: BoardState= BoardState::new(board_state_fen).unwrap_or_else(|e| panic!("Error creating board state"));
+        let mut board_state: BoardState = BoardState::new(board_state_fen)
+            .unwrap_or_else(|e| panic!("Error creating board state"));
         let best_move = calculate_best_move(&board_state, 5).move_found.unwrap();
         board_state.print_board();
         board_state.make_move(&best_move);
@@ -276,13 +318,13 @@ mod tests {
     #[test]
     fn takes_queen_over_rook() {
         let board_state_fen: &str = "k7/4r1q1/5P2/8/8/8/8/K7 w - - 0 1";
-        let mut board_state: BoardState= BoardState::new(board_state_fen).unwrap_or_else(|e| panic!("Error creating board state"));
+        let mut board_state: BoardState = BoardState::new(board_state_fen)
+            .unwrap_or_else(|e| panic!("Error creating board state"));
         let best_move = calculate_best_move(&board_state, 5).move_found.unwrap();
         println!("{:?}", best_move);
         board_state.print_board();
         board_state.make_move(&best_move);
         board_state.print_board();
-
 
         match best_move.piece_captured {
             Some(piece) => {
@@ -301,14 +343,15 @@ mod tests {
 
     #[test]
     fn finds_mate() {
-        let board_state_fen: &str = "rnbqkbnr/ppppp2p/5p2/6p1/3PP3/8/PPP2PPP/RNBQKBNR w KQkq d4 0 1";
-        let mut board_state: BoardState= BoardState::new(board_state_fen).unwrap_or_else(|e| panic!("Error creating board state"));
+        let board_state_fen: &str =
+            "rnbqkbnr/ppppp2p/5p2/6p1/3PP3/8/PPP2PPP/RNBQKBNR w KQkq d4 0 1";
+        let mut board_state: BoardState = BoardState::new(board_state_fen)
+            .unwrap_or_else(|e| panic!("Error creating board state"));
         let best_move = calculate_best_move(&board_state, 5).move_found.unwrap();
         println!("{:?}", best_move);
         board_state.print_board();
         board_state.make_move(&best_move);
         board_state.print_board();
-
 
         match best_move.move_type {
             MoveType::Standard(std_move) => {
@@ -323,6 +366,4 @@ mod tests {
             }
         }
     }
-
-
 }

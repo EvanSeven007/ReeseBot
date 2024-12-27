@@ -1,5 +1,5 @@
-use crate::piece::{Piece, PieceType};
 use crate::color::Color;
+use crate::piece::{Piece, PieceType};
 
 /* Position of a square on the board */
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
@@ -20,21 +20,22 @@ pub enum Direction {
     DownLeft,
 }
 
-/* All moves are of one of three types */ 
+/* All moves are of one of three types */
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum MoveType {
-    Standard(StandardMove), //move a piece from one square to another
-    Castle(CastleMove), //Castling 
+    Standard(StandardMove),   //move a piece from one square to another
+    Castle(CastleMove),       //Castling
     Promotion(PromotionMove), //upgrade pawn by getting to the back row
     EnPassant(EnPassantMove),
 }
 
-/* Standard moves involve normal captures and enpassants */ 
+/* Standard moves involve normal captures and enpassants */
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub struct StandardMove { //enpassant is in this?
-    pub before: Position, 
-    pub after: Position, 
-    pub piece_moved: Piece, 
+pub struct StandardMove {
+    //enpassant is in this?
+    pub before: Position,
+    pub after: Position,
+    pub piece_moved: Piece,
 }
 
 /* Castles are either king or queenside */
@@ -62,7 +63,7 @@ pub struct EnPassantMove {
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct Move {
     pub move_type: MoveType,
-    pub piece_captured: Option<Piece>, 
+    pub piece_captured: Option<Piece>,
 }
 
 impl Move {
@@ -71,27 +72,28 @@ impl Move {
         match self.move_type {
             MoveType::Standard(val) => {
                 return format!("{}{}", val.before.to_string(), val.after.to_string());
-            },
+            }
             MoveType::Promotion(val) => {
                 return format!("{}{}", val.before.to_string(), val.after.to_string());
-            },
+            }
             MoveType::EnPassant(val) => {
                 return format!("{}{}", val.before.to_string(), val.after.to_string());
-            },
-            MoveType::Castle(val) => {
-                match val.is_kingside {
-                    true => return String::from("0-0"),
-                    false => return String::from("0-0-0"),
-                }
             }
+            MoveType::Castle(val) => match val.is_kingside {
+                true => return String::from("0-0"),
+                false => return String::from("0-0-0"),
+            },
         }
     }
 }
 
-//Struct that encapsulates the numerical position on a chessboard 
+//Struct that encapsulates the numerical position on a chessboard
 impl Position {
     pub fn swap(self) -> Position {
-        Position {row: self.col, col: self.row}
+        Position {
+            row: self.col,
+            col: self.row,
+        }
     }
 
     pub fn is_valid_position(self) -> bool {
@@ -100,48 +102,44 @@ impl Position {
 
     //Returns the square to the right from the perspective of white
     pub fn right(self) -> Position {
-        Position{row: self.row, col: self.col + 1}
+        Position {
+            row: self.row,
+            col: self.col + 1,
+        }
     }
     //Returns the square to the left from the perspective of white
     pub fn left(self) -> Position {
-        Position{row: self.row, col: self.col - 1}
+        Position {
+            row: self.row,
+            col: self.col - 1,
+        }
     }
     //Returns the square to the top from the perspective of white
     pub fn up(self) -> Position {
-        Position{row: self.row - 1, col: self.col}
+        Position {
+            row: self.row - 1,
+            col: self.col,
+        }
     }
     //Returns the square to the bottom from the perspective of white
     pub fn down(self) -> Position {
-        Position{row: self.row + 1, col: self.col}
-    } 
+        Position {
+            row: self.row + 1,
+            col: self.col,
+        }
+    }
 
     //Takes in a directiona and returns the square in that position
     pub fn next_position(self, dir: &Direction) -> Position {
         match dir {
-            Direction::Right => {
-                self.right()
-            },
-            Direction::Left => {
-                self.left()
-            },
-            Direction::Up => {
-                self.up()
-            },
-            Direction::Down => {
-                self.down()
-            },
-            Direction::UpRight => {
-                self.up().right()
-            },
-            Direction::UpLeft => {
-                self.up().left()
-            },
-            Direction::DownRight => {
-                self.down().right()
-            },
-            Direction::DownLeft => {
-                self.down().left()
-            },
+            Direction::Right => self.right(),
+            Direction::Left => self.left(),
+            Direction::Up => self.up(),
+            Direction::Down => self.down(),
+            Direction::UpRight => self.up().right(),
+            Direction::UpLeft => self.up().left(),
+            Direction::DownRight => self.down().right(),
+            Direction::DownLeft => self.down().left(),
         }
     }
 
@@ -193,14 +191,23 @@ impl Position {
             _ => return Err("Index out of bounds"),
         }
 
-        Ok(Position{row, col})
+        Ok(Position { row, col })
     }
 }
 
 /* Constructor functions for each of the basic moves */
-pub fn standard(before: Position, after: Position, piece_moved: Piece, piece_captured: Option<Piece>) -> Move {
-    let move_type: MoveType = MoveType::Standard(StandardMove{before, after, piece_moved});
-    
+pub fn standard(
+    before: Position,
+    after: Position,
+    piece_moved: Piece,
+    piece_captured: Option<Piece>,
+) -> Move {
+    let move_type: MoveType = MoveType::Standard(StandardMove {
+        before,
+        after,
+        piece_moved,
+    });
+
     Move {
         move_type,
         piece_captured,
@@ -208,7 +215,7 @@ pub fn standard(before: Position, after: Position, piece_moved: Piece, piece_cap
 }
 
 pub fn castle(is_kingside: bool, color: Color) -> Move {
-    let move_type: MoveType = MoveType::Castle(CastleMove{is_kingside});
+    let move_type: MoveType = MoveType::Castle(CastleMove { is_kingside });
 
     Move {
         move_type,
@@ -216,10 +223,19 @@ pub fn castle(is_kingside: bool, color: Color) -> Move {
     }
 }
 
-pub fn promotion(before: Position, after: Position, promote_to: Piece, piece_captured: Option<Piece>) -> Move {
+pub fn promotion(
+    before: Position,
+    after: Position,
+    promote_to: Piece,
+    piece_captured: Option<Piece>,
+) -> Move {
     assert!(promote_to.piece_type != PieceType::King);
-    let move_type: MoveType = MoveType::Promotion(PromotionMove{before, after, promote_to});
-    
+    let move_type: MoveType = MoveType::Promotion(PromotionMove {
+        before,
+        after,
+        promote_to,
+    });
+
     Move {
         move_type,
         piece_captured,
@@ -228,8 +244,17 @@ pub fn promotion(before: Position, after: Position, promote_to: Piece, piece_cap
 
 //Could be done better
 //Enpassant is position of captured pawn
-pub fn en_passant(before: Position, after: Position, en_passant_pos: Position, piece_captured: Option<Piece>) -> Move{
-    let move_type: MoveType = MoveType::EnPassant(EnPassantMove{before, after, en_passant_pos});
+pub fn en_passant(
+    before: Position,
+    after: Position,
+    en_passant_pos: Position,
+    piece_captured: Option<Piece>,
+) -> Move {
+    let move_type: MoveType = MoveType::EnPassant(EnPassantMove {
+        before,
+        after,
+        en_passant_pos,
+    });
 
     Move {
         move_type,
@@ -239,13 +264,13 @@ pub fn en_passant(before: Position, after: Position, en_passant_pos: Position, p
 
 #[cfg(test)]
 mod tests {
-    use super::*; 
+    use super::*;
 
     #[test]
     fn test_1() {
         let res = Position::from_string(String::from("e1"));
         match res {
-            Ok(val) => assert_eq!(Position{row: 9, col: 6}, val),
+            Ok(val) => assert_eq!(Position { row: 9, col: 6 }, val),
             Err(e) => panic!("{}", e),
         }
     }
@@ -254,7 +279,7 @@ mod tests {
     fn test_2() {
         let res = Position::from_string(String::from("h5"));
         match res {
-            Ok(val) => assert_eq!(Position{row: 5, col: 9}, val),
+            Ok(val) => assert_eq!(Position { row: 5, col: 9 }, val),
             Err(e) => panic!("{}", e),
         }
     }
@@ -263,7 +288,7 @@ mod tests {
     fn test_3() {
         let res = Position::from_string(String::from("C7"));
         match res {
-            Ok(val) => assert_eq!(Position{row: 3, col: 4}, val),
+            Ok(val) => assert_eq!(Position { row: 3, col: 4 }, val),
             Err(e) => panic!("{}", e),
         }
     }
@@ -280,7 +305,7 @@ mod tests {
     fn test_5() {
         let res = Position::from_string(String::from(" C7 "));
         match res {
-            Ok(val) => assert_eq!(Position{row: 3, col: 4}, val),
+            Ok(val) => assert_eq!(Position { row: 3, col: 4 }, val),
             Err(e) => panic!("{}", e),
         }
     }

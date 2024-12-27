@@ -1,11 +1,11 @@
-use core::fmt;
 use crate::color::Color;
+use core::fmt;
 
-/* Enumeration for a piece type */ 
+/* Enumeration for a piece type */
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum PieceType {
-    King, 
-    Queen, 
+    King,
+    Queen,
     Bishop,
     Knight,
     Rook,
@@ -22,7 +22,7 @@ pub struct Piece {
 impl Piece {
     pub fn worth(self) -> f32 {
         let mult: f32;
-        
+
         match self.color {
             Color::White => mult = 1.0,
             Color::Black => mult = -1.0,
