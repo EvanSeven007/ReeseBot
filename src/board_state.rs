@@ -252,7 +252,7 @@ impl BoardState {
                     y_positions = vec![6,2,4,5];
                 }
                 //Set castling rights here
-                match val.color {
+                match self.active_color {
                     Color::White => {
                         x_position = 9; //First row
                         self.castle_rights.can_castle_white_kingside = false;

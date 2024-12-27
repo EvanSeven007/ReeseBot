@@ -11,11 +11,12 @@ mod move_parser;
 mod evaluation;
 
 use board_state::BoardState;
+use move_parser::validate_move;
 use crate::move_gen::gen_all_moves;
 use crate::move_parser::parse_move;
 use crate::color::Color;
 use crate::engine::calculate_best_move;
-use clap::Parser;
+use clap::{Parser, ArgAction};
 use simple_logger::SimpleLogger;
 use log::{info, error};
 use std::env;
@@ -33,6 +34,10 @@ struct Args {
     /// Number in seconds allocated to engine to think 
     #[arg(short, long, default_value_t = 10)]
     time_to_think: u64,
+
+    /// Enables the engine mode
+    #[arg(long, action = ArgAction::SetTrue)]
+    engine_mode_on: bool,
 }
 
 
@@ -74,16 +79,17 @@ fn play_game(board_state_fen: &str, time_to_think: u64) {
             Color::White => {
                 println!("Please enter a move: ");
                 std::io::stdin().read_line(&mut input).unwrap();
-                match parse_move(input, &board, moves) {
+                match parse_move(&input, &board) {
                     Ok(mv) => {
                         clear_screen();
                         board.make_move(&mv);
                         board.print_board();
                     },
                     Err(e) => {
-                        error!("Error: {}", e);
+                        error!("Received Invalid Move: {}", e);
                     }
                 }
+
             },
             Color::Black => {
                 println!("Thinking...");

@@ -41,7 +41,6 @@ pub struct StandardMove { //enpassant is in this?
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub struct CastleMove {
     pub is_kingside: bool, //Else queenside
-    pub color: Color, 
 }
 
 /* Promoting a pawn */
@@ -209,7 +208,7 @@ pub fn standard(before: Position, after: Position, piece_moved: Piece, piece_cap
 }
 
 pub fn castle(is_kingside: bool, color: Color) -> Move {
-    let move_type: MoveType = MoveType::Castle(CastleMove{is_kingside, color});
+    let move_type: MoveType = MoveType::Castle(CastleMove{is_kingside});
 
     Move {
         move_type,
@@ -279,7 +278,7 @@ mod tests {
 
     #[test]
     fn test_5() {
-        let res = Position::from_string(String::from("C7 "));
+        let res = Position::from_string(String::from(" C7 "));
         match res {
             Ok(val) => assert_eq!(Position{row: 3, col: 4}, val),
             Err(e) => panic!("{}", e),

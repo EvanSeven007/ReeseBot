@@ -3,11 +3,12 @@ use log::{debug, info};
 use crate::board_state::{self, BoardState};
 use crate::chess_move::{castle, Move, MoveType, Position};
 use crate::color::Color;
+use crate::move_gen::gen_all_moves;
 use crate::piece::{Piece, PieceType};
 use std::process::exit;
 
 #[derive(Debug)]
-struct MoveMetadata {
+struct MoveMetadata<'a> {
     piece: Option<PieceType>,
     from_square_y: Option<usize>,
     to_square_x: Option<usize>,
@@ -20,6 +21,7 @@ struct MoveMetadata {
     just_saw_promotion_char: bool,
     is_check: bool,
     is_checkmate: bool,
+    move_string: &'a str
 }
 /**
  * Tries to parse a move from user-input and returns the corresponding Move Struct if it is a valid move, otherwise returns an error message
@@ -28,30 +30,24 @@ struct MoveMetadata {
  * moves: The list of all possible moves that the player can make
  */
 pub fn parse_move<'a>(
-    move_string: String,
-    board: &BoardState,
-    moves: Vec<Move>,
+    move_string: &'a str,
+    board: &'a BoardState,
 ) -> Result<Move, &'a str> {
-    // In the future we will branch based on if we're playing an engine or a human
-    return parse_fen(move_string, board, moves);
+    let move_metadata = parse_fen(move_string)?;
+    return validate_move(&move_metadata, board, gen_all_moves(board, board.active_color))
 }
 
 /**
- * Parses a FEN move string and tries to create a Move struct from it. If it cannot find an equivalent move from the set of valid moves then it returns an error
- * move_string: The string that the user has inputted\
+ * Parses a FEN move string and tries to create a Move struct from it. 
  * board: The current board state
  * moves: The set of all possible moves that the player can make
  */
 fn parse_fen<'a>(
-    move_string: String,
-    board: &BoardState,
-    moves: Vec<Move>,
-) -> Result<Move, &'a str> {
+    move_string: &'a str,
+) -> Result<MoveMetadata<'a>, &'a str> {
     let trimmed_string = move_string.trim();
     let parsed_move: Move;
-    if trimmed_string == "0-0" || trimmed_string == "0-0-0" {
-        return handle_castle_move(trimmed_string, board.active_color.clone(), moves);
-    }
+
     if trimmed_string.to_lowercase() == "resign" {
         info!("Thanks for playing!");
         exit(0);
@@ -69,6 +65,7 @@ fn parse_fen<'a>(
         just_saw_promotion_char: false,
         is_check: false,
         is_checkmate: false,
+        move_string: trimmed_string
     };
 
     for ch in trimmed_string.chars() {
@@ -121,63 +118,7 @@ fn parse_fen<'a>(
         return Err("Parse error: Missing y coord of square to move to!");
     }
 
-
-    // If we captured something, we need to find out what it was
-    let move_type: MoveType;
-    let after_pos = Position {
-        row: move_info.to_square_y.unwrap(),
-        col: move_info.to_square_x.unwrap(),
-    };
-    if move_info.is_capture == Some(true) {
-        move_info.captured_piece = board.get_piece(after_pos);
-        if move_info.captured_piece.is_none() {
-            return Err("Parse error: No piece to capture at destination square.");
-        }
-    }
-
-    // Filter out all invalid moves. This isn't a direct search as its possible for the user to specify a move that could be made by multiple pieces. (i.e. two knights that can move to the same square)
-    let valid_moves: Vec<Move> = moves
-        .into_iter()
-        // Filter out all non-matching moves
-        .filter(|mv: &Move| {
-            // Either both have to be None or the same thing
-            if mv.piece_captured != move_info.captured_piece {
-                return false;
-            }
-            match mv.move_type {
-                MoveType::Standard(standard) => {
-                    standard.piece_moved.piece_type == move_info.piece.unwrap()
-                    && standard.after == after_pos
-                    && move_info.promotion.is_none()
-                    && move_info.piece_rank == move_info.from_square_y
-                }
-                MoveType::Promotion(promo_move) => {
-                    if move_info.promotion.is_none() {
-                        return false;
-                    }
-
-                    promo_move.promote_to.piece_type == move_info.promotion.unwrap()
-                    && promo_move.after == after_pos
-                }
-                MoveType::EnPassant(enpassant) => {
-                    move_info.piece == Some(PieceType::Pawn)      
-                    && move_info.is_capture == Some(true)
-                    && move_info.captured_piece.unwrap().piece_type == PieceType::Pawn          
-                    && enpassant.after == after_pos
-                }
-                _ => false,
-            }
-        })
-        .collect();
-
-    if valid_moves.len() == 1 {
-        return Ok(valid_moves[0]);
-    }
-    if valid_moves.len() > 1 {
-        return select_correct_move(&mut move_info, valid_moves); 
-    }
-
-    return Err("Could not find a valid move that matches your input!");
+    return Ok(move_info);
 }
 
 fn parse_uci<'a>(
@@ -186,6 +127,71 @@ fn parse_uci<'a>(
     moves: Vec<Move>,
 ) -> Result<Move, &'a str> {
     todo!();
+}
+
+pub fn validate_move<'a>(move_info: &MoveMetadata<'a>, board: &'a BoardState, moves: Vec<Move>) -> Result<Move, &'a str> {
+    // If we captured something, we need to find out what it was
+    let move_type: MoveType;
+    let after_pos = Position {
+        row: move_info.to_square_y.unwrap(),
+        col: move_info.to_square_x.unwrap(),
+    };
+                    let mut captured_piece: Option<Piece> = None;
+
+                    // if trimmed_string == "0-0" || trimmed_string == "0-0-0" {
+                    //     return Ok(castle(trimmed_string == "0-0"));
+                    // }
+
+                    if move_info.is_capture == Some(true) {
+                        captured_piece = board.get_piece(after_pos);
+                        if captured_piece.is_none() {
+                            return Err("Parse error: No piece to capture at destination square.");
+                        }
+                    }
+
+
+                        // Filter out all invalid moves. This isn't a direct search as its possible for the user to specify a move that could be made by multiple pieces. (i.e. two knights that can move to the same square)
+                        let valid_moves: Vec<Move> = moves
+                        .into_iter()
+                        // Filter out all non-matching moves
+                        .filter(|mv: &Move| {
+                            // Either both have to be None or the same thing
+                            if mv.piece_captured != captured_piece {
+                                return false;
+                            }
+                            match mv.move_type {
+                                MoveType::Standard(standard) => {
+                                    standard.piece_moved.piece_type == move_info.piece.unwrap()
+                                    && standard.after == after_pos
+                                    && move_info.promotion.is_none()
+                                    && move_info.piece_rank == move_info.from_square_y
+                                }
+                                MoveType::Promotion(promo_move) => {
+                                    if move_info.promotion.is_none() {
+                                        return false;
+                                    }
+
+                                    promo_move.promote_to.piece_type == move_info.promotion.unwrap()
+                                    && promo_move.after == after_pos
+                                }
+                                MoveType::EnPassant(enpassant) => {
+                                    move_info.piece == Some(PieceType::Pawn)      
+                                    && move_info.is_capture == Some(true)
+                                    && captured_piece.unwrap().piece_type == PieceType::Pawn          
+                                    && enpassant.after == after_pos
+                                }
+                                _ => false,
+                            }
+                        })
+                        .collect();
+
+                    if valid_moves.len() == 1 {
+                        return Ok(valid_moves[0]);
+                    }
+                    if valid_moves.len() > 1 {
+                        return select_correct_move(move_info, valid_moves); 
+                    }
+                    return Err("Could not find a valid move that matches your input!");
 }
 
 fn handle_lowercase_char(move_info: &mut MoveMetadata, ch: char) -> Result<(), &'static str> {
@@ -280,7 +286,7 @@ fn handle_castle_move(
     }
 }
 
-fn select_correct_move(move_info: &mut MoveMetadata, valid_moves: Vec<Move>) -> Result<Move, &'static str> {
+fn select_correct_move(move_info: &MoveMetadata, valid_moves: Vec<Move>) -> Result<Move, &'static str> {
     if move_info.piece_rank.is_none() {
         return Err("Ambiguous move: Multiple pieces of the same type can move to the same square. Please specify the rank of the piece you want to move.");
     }
@@ -344,7 +350,7 @@ mod tests {
         ];
 
         for mv_string in moves_string {
-            let result = parse_move(mv_string.clone(), &board_state, moves.clone());
+            let result = parse_move(&mv_string, &board_state);
             if result.is_err() {
                 println!(
                     "Error: {} when trying to parse move: {}",
@@ -386,7 +392,7 @@ mod tests {
         ];
 
         for mv_string in moves_string {
-            let result = parse_move(mv_string.clone(), &board_state, moves.clone());
+            let result = parse_move(&mv_string, &board_state);
             if result.is_err() {
                 println!(
                     "Error: {} when trying to parse move: {}",
@@ -411,7 +417,7 @@ mod tests {
         ];
 
         for mv_string in moves_string {
-            let result = parse_move(mv_string.clone(), &board_state, moves.clone());
+            let result = parse_move(&mv_string, &board_state);
             if result.is_err() {
                 println!(
                     "Error: {} when trying to parse move: {}",
@@ -423,7 +429,7 @@ mod tests {
         }
 
         // Testing that invalid promotions are caught
-        assert!(parse_move(String::from("d8=K"), &board_state, moves.clone()).is_err());
+        assert!(parse_move(&String::from("d8=K"), &board_state).is_err());
     }
 
     #[test]
