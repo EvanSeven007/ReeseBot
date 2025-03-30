@@ -183,7 +183,7 @@ fn alpha_beta(
                 return score;
             }
             search.set_principle_variation();
-            potential_best_score = score;
+            potential_best_score = -1 * score;
         }
     }
 
