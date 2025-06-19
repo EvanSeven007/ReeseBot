@@ -15,6 +15,7 @@ const MATE_VALUE: i32 = 1000000000; //evaluation of a board state in mate
 pub const MAX_DEPTH: u16 = 8;
 pub const ARRAY_SIZE: usize = ((MAX_DEPTH * MAX_DEPTH + MAX_DEPTH) / 2 + 1) as usize;
 type MoveList = [Option<Move>; ARRAY_SIZE];
+type MoveListV2 = [Option<MoveV2>; ARRAY_SIZE];
 
 pub struct Search {
     pub nodes_searched: u32,
@@ -22,9 +23,21 @@ pub struct Search {
     pub current_line: MoveList, //current line being searched
 }
 
+pub struct SearchV2 {
+    pub nodes_searched: u32,
+    pub pv_moves: MoveListV2,
+    pub current_line: MoveListV2, //current line being searched
+}
+
 pub struct SearchResult {
     pub score: i32,
     pub move_found: Option<Move>,
+}
+
+
+pub struct SearchResultV2 {
+    pub score: i32,
+    pub move_found: Option<MoveV2>,
 }
 
 impl Search {
@@ -41,6 +54,33 @@ impl Search {
     }
 
     pub fn insert_into_current_line(&mut self, ply: i32, mv: &Move) {
+        self.current_line[ply as usize] = Some(*mv);
+    }
+
+    pub fn set_principle_variation(&mut self) {
+        self.pv_moves = self.current_line.clone();
+    }
+
+    pub fn reset_search(&mut self) {
+        self.nodes_searched = 0;
+        self.current_line = [None; ARRAY_SIZE];
+    }
+}
+
+impl SearchV2 {
+    pub fn new() -> SearchV2 {
+        SearchV2 {
+            nodes_searched: 0,
+            pv_moves: [None; ARRAY_SIZE],
+            current_line: [None; ARRAY_SIZE],
+        }
+    }
+
+    pub fn increment_nodes_searched(&mut self) {
+        self.nodes_searched += 1;
+    }
+
+    pub fn insert_into_current_line(&mut self, ply: i32, mv: &MoveV2) {
         self.current_line[ply as usize] = Some(*mv);
     }
 
@@ -90,11 +130,147 @@ fn quiesce(mut alpha: i32, mut beta: i32, search: &mut Search, board: &BoardStat
     return alpha;
 }
 
+fn quiesceV2(mut alpha: i32, mut beta: i32, search: &mut SearchV2, board: &BoardState) -> i32 {
+    let init_eval: i32 = evaluate(board);
+
+    search.increment_nodes_searched();
+
+    if init_eval >= beta {
+        return beta;
+    }
+    if alpha < init_eval {
+        alpha = init_eval;
+    }
+
+    let mut score: i32;
+    let mut board_copy;
+    let active_color = board.active_color;
+    for mv in gen_all_moves(board, active_color) {
+        match mv.piece_captured {
+            Some(_) => {
+                board_copy = board.clone();
+                board_copy.make_move(&mv);
+                score = -1 * quiesceV2(-1 * beta, -1 * alpha, search, &board_copy);
+                if score >= beta {
+                    return beta;
+                }
+
+                if score > alpha {
+                    alpha = score;
+                }
+            }
+            None => {}
+        }
+    }
+
+    return alpha;
+}
+
 fn alpha_beta(
     mut alpha: i32,
     mut beta: i32,
     mut depth: u16,
     search: &mut Search,
+    ply: i32,
+    board: &BoardState,
+    start: Instant,
+    time_to_think: u64,
+) -> i32 {
+    if start.elapsed().as_secs() > time_to_think {
+        return quiesce(alpha, beta, search, board);
+    }
+    search.increment_nodes_searched();
+    let ply_index: usize = ply as usize;
+
+    if depth == 0 {
+        let active_color = board.active_color;
+        if board.is_in_check(active_color, None) {
+            depth += 1;
+        } else {
+            return quiesce(alpha, beta, search, board);
+        }
+    }
+
+    alpha = max(alpha, ply - MATE_VALUE);
+    beta = min(beta, MATE_VALUE - ply);
+
+    if alpha >= beta {
+        return alpha;
+    }
+
+    let active_color = board.active_color;
+    let mut moves = gen_all_moves(board, active_color);
+
+    //Game over
+    if moves.len() == 0 {
+        if board.is_in_check(active_color, None) {
+            return -1 * (MATE_VALUE - ply); //Checkmate
+        } else {
+            return 0; //Draw by stalemate
+        }
+    }
+
+    let mut potential_best_score: i32 = i32::MIN;
+    let mut other_moves: Vec<Move> = Vec::new();
+    //Calculating on principal variation first
+    for mv in &mut moves {
+        if board.last_move == search.pv_moves[ply_index] {
+            let mut board_copy = board.clone();
+            board_copy.make_move(mv);
+            search.insert_into_current_line(ply, mv); //Ply or ply + 1?
+            potential_best_score = -alpha_beta(
+                -1 * beta,
+                -1 * alpha,
+                depth - 1,
+                search,
+                ply + 1,
+                &board_copy,
+                start,
+                time_to_think,
+            );
+            if potential_best_score > alpha {
+                if potential_best_score >= beta {
+                    return potential_best_score;
+                }
+                search.set_principle_variation();
+                alpha = potential_best_score;
+            }
+        } else {
+            other_moves.push(*mv);
+        }
+    }
+
+    for mv in &mut other_moves {
+        search.insert_into_current_line(ply, mv);
+        let mut board_copy = board.clone();
+        board_copy.make_move(mv);
+        let mut score = -alpha_beta(
+            -1 * beta,
+            -1 * alpha,
+            depth - 1,
+            search,
+            ply + 1,
+            &board_copy,
+            start,
+            time_to_think,
+        );
+        if -1 * score > potential_best_score {
+            if score >= beta {
+                return score;
+            }
+            search.set_principle_variation();
+            potential_best_score = -1 * score;
+        }
+    }
+
+    potential_best_score
+}
+
+fn alpha_beta_V2(
+    mut alpha: i32,
+    mut beta: i32,
+    mut depth: u16,
+    search: &mut SearchV2,
     ply: i32,
     board: &BoardState,
     start: Instant,
