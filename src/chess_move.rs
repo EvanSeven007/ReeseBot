@@ -87,6 +87,33 @@ impl Move {
     }
 }
 
+/* A general move, simplified from the original implementation */
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub struct MoveV2 {
+    // From, to squares
+    pub from: Position,
+    pub to: Position,
+    // if a promotion is made, this is what the piece if promoted to
+    pub promotion: Option<PieceType>,
+    pub is_castle: bool, //If true, then this is a castle move
+}
+
+impl MoveV2 {
+    pub fn to_string(self) -> String {
+        
+        if self.is_castle {
+            // Fancy absolute value logic for usize that's apparently fast
+            match self.from.col.saturating_sub(self.to.col).max(self.to.col.saturating_sub(self.from.col)) {
+                2 => return String::from("0-0"),
+                4 => return String::from("0-0-0"),
+                _ => panic!("Invalid castle move: {:?}", self),
+            }
+        }
+
+        format!("{}{}", self.from.to_string(), self.to.to_string())
+    }
+}
+
 //Struct that encapsulates the numerical position on a chessboard
 impl Position {
     pub fn swap(self) -> Position {
@@ -155,13 +182,14 @@ impl Position {
             7 => start = String::from("f"),
             8 => start = String::from("g"),
             9 => start = String::from("h"),
-            _ => start = String::from("Not a valid Position!!"),
+            _ => panic!("Not a valid Position! {:?}", self),
         }
         let end = (10 - self.row).to_string();
 
         format!("{}{}", start, end)
     }
 
+    // parses a position from a string in standard notation (i.e. a3, d4, e5)
     pub fn from_string<'a>(position: String) -> Result<Position, &'a str> {
         let position_stripped: Vec<&str> = position.split_whitespace().collect();
         if position_stripped.len() > 1 && position_stripped[1] != " " {
